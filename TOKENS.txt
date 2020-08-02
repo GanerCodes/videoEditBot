@@ -1,0 +1,7 @@
+discord = DISCORD_KEY_HERE
+
+twitter:
+consumer_key = CONSUMER_KEY_HERE
+consumer_secret = CONSUMER_SECRET_HERE
+access_key = ACCESS_KEY_HERE
+access_secret = ACCESS_SECRET_HERE
