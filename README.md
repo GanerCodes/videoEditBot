@@ -1,4 +1,4 @@
-#Edits videos through discord/twitter. More features to come.
+# Edits videos through discord/twitter. More features to come.
 
 [Commands](https://pastebin.com/raw/m6q3LA4H) (docs will come later):
 
