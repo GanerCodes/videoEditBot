@@ -1,7 +1,8 @@
 
 TOKENS.txt
-*.mp4
+/*.mp4
 /*.jpg
+/*.png
 __pycache__
 active
 *.pem
