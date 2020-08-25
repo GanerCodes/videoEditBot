@@ -1,5 +1,5 @@
 @ECHO OFF
 TITLE Discord
 :loop
-python discordBot.py
+python socketWrap.py "python -u discordBot.py" 2
 goto loop

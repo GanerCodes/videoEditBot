@@ -1,14 +1,17 @@
-import os, re, random, struct, subprocess
-import itertools
-from itertools import chain
-from itertools import repeat
+from pathHelper import *
+from subprocess import getoutput
+from struct import pack
+from random import uniform, randint
+from re import finditer, search
+from os import system, path, mkdir, rename, remove, rmdir
+from itertools import repeat, chain
 
 def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
 def bstream_until_marker(bfilein, bfileout, marker=0, startpos=0):
 	chunk = 1024
-	filesize = os.path.getsize(bfilein)
+	filesize = path.getsize(bfilein)
 	if marker :
 		marker = str.encode(marker)
 
@@ -20,7 +23,7 @@ def bstream_until_marker(bfilein, bfileout, marker=0, startpos=0):
 
 				if marker:
 					if buffer.find(marker) > 0 :
-						marker_pos = re.search(marker, buffer).start() # position is relative to buffer glitchedframes
+						marker_pos = search(marker, buffer).start() # position is relative to buffer glitchedframes
 						marker_pos = marker_pos + pos # position should be absolute now
 						split = buffer.split(marker, 1)
 						wr.write(split[0])
@@ -38,19 +41,22 @@ def ricecake(filein, amount, hasAudio):
 	firstframe = 1
 	kill = 0.7
 
-	e = os.path.splitext(filein)
-	frameCount = int(subprocess.getoutput(f"ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 {filein}"))
-	os.system(f"ffmpeg -y -hide_banner -loglevel fatal -i {filein} -r 30 -g {int(frameCount / 2)} -vf fps=30 -keyint_min 1000000 -qscale 0 RC{e[0]}.avi")
-	os.remove(f"{e[0]}.mp4")
-	filein = f"RC{e[0]}.avi"
+	pat = getDir(filein)
+	e = path.splitext(filein)
+	e0 = getName(filein)
 
-	temp_nb = random.randint(10000, 99999)
-	temp_dir = "temp-" + str(temp_nb)
+	frameCount = int(getoutput(f"ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 {filein}"))
+	system(f"ffmpeg -y -hide_banner -loglevel fatal -i {filein} -r 30 -g {int(frameCount / 2)} -vf fps=30 -keyint_min 1000000 -qscale 0 {pat}/RC{e0}.avi")
+	remove(filein)
+	filein = f"{pat}/RC{e0}.avi"
+
+	temp_nb = randint(10000, 99999)
+	temp_dir = f"{pat}/temp-" + str(temp_nb)
 	temp_hdrl = temp_dir +"/hdrl.bin"
 	temp_movi = temp_dir +"/movi.bin"
 	temp_idx1 = temp_dir +"/idx1.bin"
 
-	os.mkdir(temp_dir)
+	mkdir(temp_dir)
 
 	movi_marker_pos = bstream_until_marker(filein, temp_hdrl, "movi")
 	idx1_marker_pos = bstream_until_marker(filein, temp_movi, "idx1", movi_marker_pos)
@@ -58,16 +64,16 @@ def ricecake(filein, amount, hasAudio):
 
 	with open(temp_movi,'rb') as rd:
 		chunk = 1024
-		filesize = os.path.getsize(temp_movi)
+		filesize = path.getsize(temp_movi)
 		frame_table = []
 
 		for pos in range(0, filesize, chunk):
 			rd.seek(pos)
 			buffer = rd.read(chunk)
-			for m in (re.finditer(b'\x30\x31\x77\x62', buffer)):
+			for m in (finditer(b'\x30\x31\x77\x62', buffer)):
 					if audio:
 						frame_table.append([m.start() + pos, 'sound'])		
-			for m in (re.finditer(b'\x30\x30\x64\x63', buffer)):
+			for m in (finditer(b'\x30\x30\x64\x63', buffer)):
 				frame_table.append([m.start() + pos, 'video'])
 			frame_table.sort(key=lambda tup: tup[0])
 		l = []
@@ -110,7 +116,7 @@ def ricecake(filein, amount, hasAudio):
 
 			if hasAudio:
 				NA = [i for i in sorted(range(len(final)), key = lambda x: abs(x - index)) if final[i][2] == "sound"]
-			times = int(random.uniform(5, 60))
+			times = int(uniform(5, 60))
 			if hasAudio:
 				r = [final[NA[int(i / 15) % len(NA)]] for i in range(int(times * 1.285))] + [final[index] for i in range(times)]
 			else:
@@ -124,17 +130,17 @@ def ricecake(filein, amount, hasAudio):
 	cname = '-c' + str(countframes) if int(countframes) > 1 else '' 
 	pname = '-n' + str(positframes) if int(positframes) > 1 else ''
 
-	fileout = f"O{e[0]}.avi"
+	fileout = f"{pat}/O{e0}.avi"
 
-	if os.path.exists(fileout):
-		os.remove(fileout)
+	if path.exists(fileout):
+		remove(fileout)
 
 	bstream_until_marker(temp_hdrl, fileout)
 
 	with open(temp_movi, 'rb') as rd:
-		filesize = os.path.getsize(temp_movi)
+		filesize = path.getsize(temp_movi)
 		with open(fileout, 'ab') as wr:
-			wr.write(struct.pack('<4s', b'movi'))
+			wr.write(pack('<4s', b'movi'))
 			for x in final:
 				if x[0] != 0 and x[1] != 0:
 					rd.seek(x[0])
@@ -142,11 +148,11 @@ def ricecake(filein, amount, hasAudio):
 
 	bstream_until_marker(temp_idx1, fileout)
 
-	os.remove(temp_hdrl)
-	os.remove(temp_movi)
-	os.remove(temp_idx1)
-	os.rmdir(temp_dir)
+	remove(temp_hdrl)
+	remove(temp_movi)
+	remove(temp_idx1)
+	rmdir(temp_dir)
 
-	os.system(f"ffmpeg -y -hide_banner -loglevel fatal -i O{e[0]}.avi {e[0]}.mp4")
-	os.remove(f"RC{e[0]}.avi")
-	os.remove(f"O{e[0]}.avi")
+	system(f"ffmpeg -y -hide_banner -loglevel fatal -i {pat}/O{e0}.avi {pat}/{e0}.mp4")
+	remove(f"{pat}/RC{e0}.avi")
+	remove(f"{pat}/O{e0}.avi")

@@ -1,9 +1,22 @@
-import tweepy, datetime, time, subprocess, requests, threading, random, re, os
-from random import randrange as r
+import tweepy, shutil, datetime, time, subprocess, requests, threading, random, re, os
+from imageCorrupt import imageCorrupt
+from destroyer import videoEdit
+from threadQue import *
+from fixPrint import fixPrint
+from random import randrange as r, choice as rc
+from PIL import Image
+Thread = threading.Thread
 
-DIRECTORY = "C:/Network_folder/Public/Twitter"
+
+DIRECTORY = "E:/Twitter"
+BASEURL = "ganer.xyz"
 
 
+if not os.path.isdir(DIRECTORY):
+    os.makedirs(DIRECTORY)
+    print(f'Created directory "{DIRECTORY}"')
+
+que = threadQue(l = True)
 
 def formatKey(l):
 	return l.split('=')[1].strip().replace('"', '')
@@ -21,35 +34,55 @@ with open("TOKENS.txt") as f:
 		elif "access_secret" in ll:
 			access_secret =		formatKey(line)
 
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_key, access_secret) 
-api = tweepy.API(auth) 
+def makeApi(access_key, access_secret):
+	authorization = tweepy.OAuthHandler(consumer_key, consumer_secret)
+	authorization.set_access_token(access_key, access_secret) 
+	return tweepy.API(authorization)
+api = makeApi(access_key, access_secret) 
 
 currentTweet, lastTweet = None, None
+
+def testCode(c):
+	if type(c) == int:
+		if c == 185:
+			return "Error: Rate limit."
+		elif c == 385:
+			return "Error: Can't see tweet to reply to."
+		else:
+			return False
+	else:
+		if c.api_code is not None:
+			return testCode(c.api_code)
+		else:
+			return f"NON-TWITTER API ERROR {str(c)}"
 
 def UFID(ID, l):
 	random.seed(ID)
 	return ''.join([str(random.randint(0, 9)) for i in range(l)])
 
+def formatPrint(pre, msg):
+	tab, nlin = '\t', '\n'
+	fixPrint(f"{pre}:{tab*2}{msg.replace(nlin, '')}")
+
+def botPrint(*objs, prefix = "", **kobjs):
+	formatPrint(prefix, ' '.join(map(str, objs)))
+
 def prettyRun(pre, cmd):
-    tab, nlin = '\t', '\n'
     proc = subprocess.Popen(cmd, stdout = subprocess.PIPE, universal_newlines = True)
     while proc.poll() is None:
         out = proc.stdout.readline()
         if out != "":
-            print(f"{pre}:{tab*2}{out.replace(nlin, '')}")
+            formatPrint(pre, out)
     return proc.returncode
 
 def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 	name = ""
 	mediaType = "mp4"
 
-	isGif = tweet._json['extended_entities']['media'][0]['type'] == 'animated_gif'
-
-	if isGif or m['expanded_url'].split('/')[-2] == "video":
+	if tweet._json['extended_entities']['media'][0]['type'] == 'animated_gif' or m['expanded_url'].split('/')[-2] == "video": #Check if GIF or normal video
 		name = f"{uniquePrefix}_{ID}.mp4"
 		subprocess.call(f'''youtube-dl --quiet --no-playlist --geo-bypass --max-filesize 50M --merge-output-format mp4 -r 5M -o {uniquePrefix}_{ID}.mp4 "{m['expanded_url']}"''')
-	else:
+	else: #Check if image
 		mediaType = "png"
 		TExt = m['media_url'].split('.')[-1]
 		name = f'''{uniquePrefix}_{ID}.{TExt}'''
@@ -65,39 +98,41 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 		txt = txt.replace(i['url'], "")
 	if isRetweet:
 		txt = re.sub(r"https:\/\/t.co\/\S{1,30}$", '', txt)
-	#print(f'Formatted tweet text: "{txt}"')
+	if 'tovid' in txt.lower():
+		mediaType = "mp4"
 
 	j = txt.strip().replace(' ', '').replace('\n', '')
-	arguments = None
-
-	if len(j) < 7 and re.match(r"i\|[0-9]{1,3}", j):
-		arguments = ["python", "-u", "imageCorrupt.py", j.split('|')[-1], name]
-	else:
-		arguments = ["python", "-u", "destroyer.py"   , txt, name, "1"]
-
-	prefix = f"P-{UFID(ID, 3)}"
-
-	if arguments is not None:
-		prettyRun(prefix, arguments)
 	
-	tt = '@'+reply._json['user']['screen_name']
-	tt = "" if tt.lower() == '@videoeditbot' else tt
+	prefix = f"P-{UFID(ID, 3)}"
+	def bpnt(m):
+		print(f"{prefix}:\t\t{m}")
 
+
+	tt = tmpName if (tmpName := '@'+reply._json['user']['screen_name']) != '@videoeditbot' else ""
 	now = datetime.datetime.now()
 	millis = str(int(round(time.time() * 1000)))
-
 	folder = DIRECTORY
 	foldName = reply._json['user']['screen_name']
 	newFolder = f"{folder}/{foldName}"
 	finalName = f"{uniquePrefix}_{ID}.{mediaType}"
 	fileName = f"_{foldName}_{millis}_{now.year}-{now.month}-{now.day}-{now.hour}.{now.minute}.{now.second}_{finalName[-6:]}"
 	newLocation = f"{newFolder}/{fileName}"
-	newURL = f"files.ganer.xyz/Twitter/{fileName}"
+	newURL = f"{BASEURL}/{foldName}/{fileName}?video"
 
-	cannotPost = False
 
-	def bpnt(m):
-		print(f"{prefix}:\t\t{m}")
+	arguments = None
+	if len(j) < 7 and re.match(r"i\|[0-9]{1,3}", j):
+		ret = imageCorrupt(name, j.split('|')[-1])
+	else:
+		def altPrint(*args, **kwargs):
+			botPrint(*args, prefix = prefix, **kwargs)
+		isRandom = re.sub(r"@[^ ]{1,}", '', txt).strip() in ['random', 'r', 'rnadom', '']
+		ret = videoEdit(name, txt, disallowTimecodeBreak = True, fixPrint = altPrint, durationUnder = 120, allowRandom = isRandom)
+		if ret == -1:
+			bpnt("Not a tweet with arguments, ignoring.")
+			if os.path.isfile(finalName): #Delete downloaded file
+				os.remove(finalName)
+			return
 
 	#Codes:
 	# -1: could not tweet text based reply
@@ -106,46 +141,77 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 	# 2 : sucessfully uploaded video to twitter
 
 	def backup():
-		if os.path.isdir(newFolder) is not True:
-			os.makedirs(newFolder)
-		os.rename(finalName, newLocation)
+		thumbFold = f"{newFolder}/thumb"
+		if os.path.isdir(thumbFold) is not True:
+			os.makedirs(thumbFold)
+		shutil.move(finalName, newLocation)
+		if mediaType == "mp4":
+			thumbLoc = f"{thumbFold}/{os.path.splitext(fileName)[0]}.jpg"
+			os.system(f"ffmpeg -hide_banner -loglevel fatal -i {newLocation} -vframes 1 {thumbLoc}")
+			img = Image.open(thumbLoc)
+			img.thumbnail((250, 250))
+			img.save(thumbLoc)
+
+	replyApi = api#random.choice(apilist)
+
+	#Respond if error code in destroyer result
+	try:
+		code = ret[0]
+		if code > 0:
+			if os.path.isfile(finalName): #If the file is still there, remove it
+				os.remove(finalName)
+			if len(ret) > 1:
+				responce = ret[1]
+			else:
+				responce = "Unhandled error."
+			replyApi.update_status(f"{tt} Sorry, something went wrong editing your video. Error: {responce}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
+			bpnt("Tweet posted (0) (Handled)")
+			return
+	except Exception as e:
+		if (tc := testCode(e)):
+			bpnt(tc)
+			return
+		bpnt(e)
+
+
 	#Check if video exists
 	try:
 		backup()
 	except Exception as e:
 		try:
-			api.update_status(f"{tt} Something went wrong processing your edit, inform Ganer if this is a mistake.", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-			bpnt("Tweet posted (0) (Backup failed)")
-			return
-		except tweepy.TweepError as b:
-			bpnt("WARN (-1) (Backup failed) "+str(b.api_code))
-			return
+			replyApi.update_status(f"{tt} Something went wrong processing your edit, inform Ganer if this is a mistake.", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
+			bpnt("Can't find result! Error tweet sent.")
+		except Exception as b:
+			bpnt("Can't find result! Error code: "+str(b.api_code))
+		return
+
 	#Try and upload the video
 	try:
 		fsize = os.path.getsize(newLocation) / (1024 ** 2)
-		if fsize > 15.5:
-			api.update_status(f"Your video was too large to directly upload, here is a backup of the result: {newURL}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-			bpnt("Tweet posted (1.5)")
+		if fsize > 15.3:
+			replyApi.update_status(f"Your video was too large to upload directly, here is a backup of the result: {newURL}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
+			bpnt("Tweet posted (2)")
 		else:
-			mediaID = api.media_upload(newLocation)
+			mediaID = replyApi.media_upload(newLocation)
 			time.sleep(5)
-			api.update_status('', media_ids=[mediaID.media_id_string], in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
+			replyApi.update_status('', media_ids=[mediaID.media_id_string], in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
 			bpnt("Tweet posted (2)")
 			return
-	except Exception as e: #If it failed
+
+	#If that failed
+	except Exception as e:
+		if (tc := testCode(e)):
+			bpnt(tc)
+			return
 		try:
-			bpnt(e.message[0]['code'])
-			api.update_status(f"Something went wrong uploading your video, here is a backup of the result: {newURL}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-			bpnt("Tweet posted (1)")
+			code = e.api_code
+			errorMessage = f"Something went wrong, Twitter error code {code}"
+
+			replyApi.update_status(f"{errorMessage}, here is a backup of the result: {newURL}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
+			bpnt(f"Tweet posted (1), Twitter error code: {code}")
 			return
 		except Exception as b:
-			try:
-				api.update_status(f"{tt} Something went wrong processing your edit, if you think this is a mistake please inform Ganer.", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-				bpnt("Tweet posted (0)")
-				return
-			except Exception as e3:
-				bpnt("WARN (-1) "+str(e3.api_code))
-				return
+			bpnt(f"WARN (-1) Code: {b.api_code}")
 
 def callBot(e, ID, mostRecentTweet, uniquePrefix, reply, isRetweet = False):
 	global count
@@ -156,13 +222,12 @@ def callBot(e, ID, mostRecentTweet, uniquePrefix, reply, isRetweet = False):
 			foldName = reply._json['user']['screen_name']
 			if os.path.isdir(f"{folder}/{foldName}") is not True:
 				os.makedirs(f"{folder}/{foldName}")
-			thread = threading.Thread(target=getContent, args = [m, ID, mostRecentTweet, uniquePrefix, reply, isRetweet])
-			thread.start()
+			que.addThread(dummyThread(target = getContent, args = [m, ID, mostRecentTweet, uniquePrefix, reply, isRetweet]))
 			count += 1
 		except Exception as e:
 			print("Error!", e)
 	else:
-		pass
+		pass #if you want you can make it do something if there isn't media in the tweet/retweet/reply
 
 def getID(obj):
 	return obj._json['id']
@@ -195,7 +260,10 @@ while True:
 		else: #No new tweets
 			continue
 	except Exception as e:
-		print("Error:", e)
+		if (cod := testCode(e)):
+			print("Error getting timeline,", cod)
+		else:
+			print("Error getting tweets:", e)
 		time.sleep(10)
 		continue
 	if len(mentionsList) > 0:
@@ -219,7 +287,23 @@ while True:
 		if 'media' in e:
 			callBot(e	, ID		, mostRecentTweet, uniquePrefix, mostRecentTweet)
 		elif mostRecentTweet._json['in_reply_to_status_id_str'] is not None:
-			topUser = api.get_status(mostRecentTweet._json['in_reply_to_status_id_str'], tweet_mode = 'extended')
+			try:
+				topUser = api.get_status(mostRecentTweet._json['in_reply_to_status_id_str'], tweet_mode = 'extended')
+			except tweepy.TweepError as TE:
+				if (codeMsg := testCode(TE)):
+					print(codeMsg)
+					pass
+				else:
+					try:
+						api.update_status(f"I can't see tweet you replied to. Perhaps they blocked me or have a private account?", in_reply_to_status_id = mostRecentTweet.id, auto_populate_reply_metadata=True)
+					except Exception as aex:
+						if (codeMsg := testCode(aex)):
+							print(codeMsg)
+							pass
+						else:
+							print("grp", aex)
+				continue
+
 			topUserE = topUser._json['entities']
 			#print(mostRecentTweet)
 			topTweetTagCount = (topUser._json['full_text'].lower()+'@'+topUser._json['user']['screen_name']).count("@videoeditbot")
@@ -242,5 +326,6 @@ while True:
 				callBot(topUserE, topUser._json['id'], topUser	, uniquePrefix, mostRecentTweet, isRetweet = True)
 			except Exception as e:
 				continue
+	que.runQuedThreads()
 	if count > 0:
-		print(f"Executed destroyer for {count} tweet{'s' if count > 1 else ''}.")
+		print(f"Executed destroyer for {count} tweet(s); {str(que).lower()}.")

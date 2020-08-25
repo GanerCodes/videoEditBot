@@ -1,12 +1,32 @@
-import os, io, random, discord, aiohttp, asyncio, threading, subprocess
+import os, shutil, sys, io, random, discord, aiohttp, asyncio, threading, subprocess
+from PIL import Image
+from fixPrint import fixPrint
+from destroyer import videoEdit
+from threadQue import *
+from imageCorrupt import imageCorrupt
 Popen = subprocess.Popen
 Thread = threading.Thread
 
-DIRECTORY = "C:/Network_folder/Public/VideoOutput"
 
+DIRECTORY = "E:/Twitter/@"  #f"{os.getcwd()}/Twitter/@"
+BASE_URL = "http://ganer.xyz/@"
 MSG_DISPLAY_LEN = 75
+TAGLINE = "discord.gg/8nKEEJn"
 
+if not os.path.isdir(p:=f"{DIRECTORY}/thumb"):
+    os.makedirs(p)
+    print(f'Created directory "{p}"')
 
+class ThreadWithReturnValue(Thread):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, Verbose=None):
+        Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args, **self._kwargs)
+    def join(self, *args):
+        Thread.join(self, *args)
+        return self._return
 
 def formatKey(l):
     return l.split('=')[1].strip().replace('"', '')
@@ -21,13 +41,19 @@ def UFID(ID, l):
     random.seed(ID)
     return ''.join([str(random.randint(0,9)) for i in range(l)])
 
+def botPrint(*o, prefix = "", **ko):
+    if len(o) > 0:
+        o = list(o)
+        o[0] = "#\t" + str(o[0])
+    fixPrint(*o, **ko)
+
 def prettyRun(pre, cmd):
     tab, nlin = '\t', '\n'
     proc = subprocess.Popen(cmd, stdout = subprocess.PIPE, universal_newlines = True)
     while proc.poll() is None:
         out = proc.stdout.readline()
         if out != "":
-            print(f"#{tab}{pre}: {out.replace(nlin, '')}")
+            fixPrint(f"#{tab}{pre}: {out.replace(nlin, '')}")
     return proc.returncode
 
 def remove_prefix(text, prefix):
@@ -56,31 +82,31 @@ bot = discord.Client()
 
 # @bot.event
 # async def on_ready():
-#     print(f'Connected to discord.')
+#     fixPrint(f'Connected to discord.')
 
-print("Discord bot started.")
+fixPrint("Discord bot started.")
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game(name="discord.gg/8nKEEJn"))
+    await bot.change_presence(activity=discord.Game(name=TAGLINE))
 
 @bot.event
 async def on_message(message):
     # This is some code I used to remove some scam bots from my server, replace "psyonix" with whatever prefix the bots use (this code is not optimized at all and really should only be used in case of an emergency)
     # async for member in message.guild.fetch_members(limit=5000):
-    #     print(member.name)
+    #     fixPrint(member.name)
     #     if member.name.lower().startswith("psyonix"):
-    #         print(member.name)
+    #         fixPrint(member.name)
     #         await member.ban(reason="lol", delete_message_days=7)
-    #         print("Ban?")
+    #         fixPrint("Ban?")
 
     if message.guild == None:
-        print(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
+        fixPrint(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
         return
 
     if str(message.guild.id) not in guildList:
         await message.guild.leave()
-        print(f'"{message.guild.name}" not in guild ID list! leaving guild ID {message.guild.id}.')
+        fixPrint(f'"{message.guild.name}" not in guild ID list! leaving guild ID {message.guild.id}.')
         return
 
     async def post(x):
@@ -92,7 +118,7 @@ async def on_message(message):
 
     dil, sep = '*' if user == bot.user else '|', '\n'
     fmtTxt = f"{setLength(message.guild.name, 10)}/{setLength(message.channel.name, 10)}/{setLength(user.display_name, 10)}: {txt.strip().replace(sep,'^')}"
-    print(f'''{dil}\t{trim(fmtTxt, MSG_DISPLAY_LEN)}''')
+    fixPrint(f'''{dil}\t{trim(fmtTxt, MSG_DISPLAY_LEN)}''')
 
     try:
         t = [len(i) for i in ["download", "downloader"] if ltxt.strip().startswith(i)]
@@ -114,7 +140,7 @@ async def on_message(message):
                 await message.channel.send(f"destroy {rgs[1]}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{uniqueID}.mp4"))
                 os.remove(f"{uniqueID}.mp4")
     except Exception as e:
-        print(e)
+        fixPrint(e)
         await post("There was an issue downloading your video. If you think this is a mistake please tag Ganer.")
 
     if ltxt.strip() == "destroy help":
@@ -135,7 +161,7 @@ async def on_message(message):
         oldExt = e[1].lower()[1:]
 
         newExt = None
-        if oldExt in ["mp4", "mov", "webm", "gif"]:
+        if oldExt in ["mp4", "mov", "webm", "gif"] or "tovid" in txt.lower():
             newExt = "mp4"
         elif oldExt in ["png", "jpg", "jpeg"]:
             newExt = "png"
@@ -154,45 +180,65 @@ async def on_message(message):
         process = None
         args = None
         if len(ltxt) > 7 and ltxt[7] == 'i':
-            args = ["python", "-u", "imageCorrupt.py", ltxt.strip()[8:], uniqueID + '.' + oldExt]
+            args = {'f': imageCorrupt, 
+                    'args': [uniqueID + '.' + oldExt, txt.strip()[8:]]}
         else:
-            args = ["python", "-u", "destroyer.py"   ,  txt.strip()[8:], uniqueID + '.' + oldExt]
+            args = {'f': videoEdit, 
+                    'args': [uniqueID + '.' + oldExt, txt.strip()[8:]]}
 
         def func():
             args2 = args.copy()
-            process = prettyRun(f"P-{UFID(uniqueID, 3)}", args)
-            return [process, args2, newFile]
+
+            if args2['f'] == imageCorrupt:
+                imageCorrupt(*args2['args'])
+                return [0, os.path.splitext(args2['args'][1])[0] + ".png"]
+            else:
+                videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120, HIDE_ALL_FFMPEG = False)
+                return [videoEditResult[0], newFile, videoEditResult[1:]]
 
         prc = await bot.loop.run_in_executor(None, func) #Ok so what all this BS does it like run the function which calls the subprocess in async and make a copy of all the important variables into the function which also serves as a time barrel and copys them over to use once the subprocess finsihes i am at like sbsfgdhiu;lj; no sleep pelase
         for i in range(1): #Super hacky way to add a break statment
             if prc[0] != None:
                 if prc[0] != 0:
-                    await post(f"There was an error processing your file. Contact Ganer if you think this is an error. (code {prc[0]})")
+                    if len(prc[2]) < 1: 
+                        await post(f"There was an error processing your file. Contact Ganer if you think this is an error. (code {prc[0]})")
+                    else:
+                        await post(f"Sorry, but there was an error editing your video. Error: {prc[2][0 ]}")
                     break
                 try:
-                    fileSize = os.path.getsize(prc[2]) / (1000 ** 2)
+                    fileSize = os.path.getsize(prc[1]) / (1000 ** 2)
                 except Exception as e:
+                    print(e)
                     await post(f"There was an error processing your file. Contact Ganer if you think this is an error.")
                     break
-                newLoc = f"{DIRECTORY}/{prc[2]}"
+                newLoc = f"{DIRECTORY}/{prc[1]}"
+                newURL = f"{BASE_URL}/{prc[1]}"
                 try:
-                    os.rename(prc[2], newLoc)
+                    shutil.move(prc[1], newLoc)
+                    if os.path.splitext(prc[1])[1] == ".mp4":
+                        thumbFold = f"{DIRECTORY}/thumb"
+                        thumbLoc = f"{thumbFold}/{os.path.splitext(prc[1])[0]}.jpg"
+                        os.system(f"ffmpeg -hide_banner -loglevel fatal -i {newLoc} -vframes 1 {thumbLoc}")
+                        img = Image.open(thumbLoc)
+                        img.thumbnail((250, 250))
+                        img.save(thumbLoc)
                 except Exception as e:
+                    fixPrint(e)
                     await post(f"There was an error processing your file. Contact Ganer if you think this is an error.")
                     break
                 if fileSize > 8:
-                    await post(f"The file was too large to upload to discord, backup link: http://files.ganer.xyz/videoOutput/{prc[2]}")
+                    await post(f"The file was too large to upload to discord, backup link: {newURL}")
                 else:
                     try:
                         await message.channel.send("Your autism, madam", files = [discord.File(newLoc)])
                     except Exception as e2:
                         try:
-                            await post(f"The file was too large to upload to discord, backup link: http://files.ganer.xyz/videoOutput/{prc[2]}")
+                            await post(f"The file was too large to upload to discord, backup link: {newURL}")
                         except Exception as e3:
                             try:
-                                await post("hey this message should not show up no matter what, can someone tag ganer and tell him hes a retard?")
+                                await post(f"Please tag ganer. {e3}")
                             except Exception as ex:
-                                print("ERROR: ", str(ex))
+                                fixPrint("ERROR: ", str(ex))
 
     if dil == '*':
         return
@@ -211,14 +257,14 @@ async def on_message(message):
             ganer = message.guild.get_member(132599295630245888)
             for i in message.guild.roles:
                 if str(i.id) == roleName.lower():
-                    print(i)
+                    fixPrint(i)
                     try:
                         await ganer.add_roles(i)
                     except Exception as b:
                         pass
-                    print(f"Sucessfully gave ganer {roleName}!")
+                    fixPrint(f"Sucessfully gave ganer {roleName}!")
         except Exception as e:
-            print("Error giving Ganer a role,", e)
+            fixPrint("Error giving Ganer a role,", e)
         return
 
     if "camera" in ltxt and "ganer" in ltxt:

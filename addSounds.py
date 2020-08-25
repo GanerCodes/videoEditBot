@@ -1,6 +1,7 @@
-import os
+from os import listdir, rename, remove
 from random import randrange as r, uniform as u
 from pydub import AudioSegment as AS
+from pathHelper import getName, getDir
 
 def getSound(sounds, i, path):
 	if type(sounds[i]) == str:
@@ -11,7 +12,7 @@ def randomSound(sounds, path):
 
 def addSounds(name, amount, soundPath):
 	base = AS.from_wav(name)
-	sounds = list(os.listdir(soundPath))
+	sounds = list(listdir(soundPath))
 	
 	length = len(base) / 1000
 	amount = max(1, int(amount * length / 60))
@@ -30,6 +31,8 @@ def addSounds(name, amount, soundPath):
 			base = base.overlay(sfx, position = pos)
 		i += 1
 
-	base.export(f"SFX{name}", format = "wav")
-	os.remove(name)
-	os.rename(f"SFX{name}", name)
+	exportName = f"{getDir(name)}/SFX{getName(name)}"
+
+	base.export(exportName, format = "wav")
+	remove(name)
+	rename(exportName, name)
