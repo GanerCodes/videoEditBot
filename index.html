@@ -175,17 +175,17 @@
 		<div class="status">
 			<i class="material-icons">memory</i>
 			<b>CPU</b>
-			<u class="cpu">69%</u>
+			<u class="cpu">Loading...</u>
 			<b>Memory</b>
-			<u class="memory">9.6 GiB of 20.0 GiB</u>
+			<u class="memory">Loading...</u>
 			<i class="material-icons">storage</i>
 			<b>Storage</b>
-			<u class="storage">36.5 GiB of 1.95 TiB</u>
+			<u class="storage">Loading...</u>
 
 		</div>
 
 		<script>
-			setInterval(() => {
+			function updateStats() {
 				fetch("https://ganer.xyz/@stats?" + Date.now())
 					.then(response => response.json())
 					.then(data => {
@@ -193,7 +193,10 @@
 						document.querySelector(".memory").innerText = data.ramUsed + " of " + data.totalRam;
 						document.querySelector(".storage").innerText = data.diskused + " of " + data.disksize;
 					});
-			}, 2000);
+			}
+			
+			setInterval(updateStats, 2000);
+			updateStats();
 		</script>
 	</body>
 </html>
