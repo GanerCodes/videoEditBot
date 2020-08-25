@@ -1,6 +1,6 @@
 
 TOKENS.txt
 *.mp4
-*.jpg
+/*.jpg
 __pycache__
 active
