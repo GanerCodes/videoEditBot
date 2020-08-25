@@ -2,8 +2,9 @@
 	<head>
 		<title>VideoEditBot</title>
 		<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      rel="stylesheet">
-      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    		  rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
 		<style>
 			:root {
 				--transitionTiming: cubic-bezier(1, 0.1, 1, 0.1);
@@ -11,23 +12,28 @@
 			}
 
 			body {
-	            top: 35%;
-	            left: 50%;
-	            transform: translate(-50%, -50%);
 				background-color: #000;
 				color: white;
 				font-size: 30px;
+				flex-direction: column;
+				font-family: var(--fontFamily);
+			}
+
+			.container {
+				top: 35%;
+				left: 50%;
 				text-align: center;
 				position: absolute;
 				display: flex;
-				flex-direction: column;
-				font-family: var(--fontFamily);
+				transform: translate(-50%, -50%);
 			}
 
 			.flex2 {
 				display: flex;
 				flex-direction: row;
 				align-items: center;
+				text-align: center;
+				padding-top: 80px;
 			}
 
 			.enterButton {
@@ -84,6 +90,8 @@
 			.mainText {
 				font-size: 40px;
 				padding-bottom: 16px;
+				width: 100%;
+				position: absolute;
 			}
 
 			.otherText {
@@ -91,55 +99,100 @@
 				color: #FF0000;
 			}
 
+			.status {
+				position: fixed;
+				bottom: 10px;
+				left: 0px;
+				text-align: center;
+				width: 100%;
+				font-size: 18px;
+				vertical-align: middle
+			}
+
+			.status i {
+				vertical-align: middle;
+				margin-top: -5px;
+			}
+
+			.status u {
+				text-decoration: none;
+				padding-left: 5px;
+				padding-right: 16px;
+			}
+
 		</style>
 	</head>
 
 	<body>
-		<text class="mainText">Enter your Twitter handle</text>
-		<div class="flex2">
-			<text class="tmp">@</text>
-			<input class="userName" placeholder="Username" id="myInput" value="">
-			<button class="enterButton" id="myBtn" onclick="javascript:redirect()">
-				<i class="material-icons">arrow_forward</i>
-			</button>
-			<script>
-				function redirect(loc) {
-					var re = /(\w){1,15}$/;
-					var inn = document.getElementById("myInput").value;
-					if(inn[inn.length - 1] == '/') {
-						inn = inn.slice(0, -1)
+		<div class="container">
+			<text class="mainText">Enter your Twitter handle</text>
+			<div class="flex2">
+				<text class="tmp">@</text>
+				<input class="userName" placeholder="Username" id="myInput" value="">
+				<button class="enterButton" id="myBtn" onclick="javascript:redirect()">
+					<i class="material-icons">arrow_forward</i>
+				</button>
+				<script>
+					function redirect(loc) {
+						var re = /(\w){1,15}$/;
+						var inn = document.getElementById("myInput").value.replace(/ /g, "");
+						if(inn[inn.length - 1] == '/') {
+							inn = inn.slice(0, -1)
+						}
+						var twitterHandle = inn.match(re)[0]
+						var URL = '/' + twitterHandle;
+						if (UrlExists(URL)) {
+							location.href = URL
+						}else{
+							document.querySelector(".otherText").innerHTML = "Error finding that profile!";
+						}
 					}
-					var twitterHandle = inn.match(re)[0]
-					var URL = '/' + twitterHandle;
-					if (UrlExists(URL)) {
-						location.href = URL
-					}else{
-						document.querySelector(".otherText").innerHTML = "Error finding that profile!";
+					function UrlExists(url) {
+					    var http = new XMLHttpRequest();
+					    http.open("HEAD", url, false);
+					    try {
+					    	http.send();
+					    } catch {
+					    	return false;
+					    }
+					    if (http.status == 200) {
+					    	return true;
+					    }else{
+							return false;
+					    }
 					}
-				}
-				function UrlExists(url) {
-				    var http = new XMLHttpRequest();
-				    http.open("HEAD", url, false);
-				    try {
-				    	http.send();
-				    } catch {
-				    	return false;
-				    }
-				    if (http.status == 200) {
-				    	return true;
-				    }else{
-				        return false;
-				    }
-				}
-				var input = document.getElementById("myInput");
-				input.addEventListener("keyup", function(event) {
-					if (event.keyCode === 13) {
-						event.preventDefault();
-						document.getElementById("myBtn").click();
-					}
-				});
-			</script>
+					var input = document.getElementById("myInput");
+					input.addEventListener("keyup", function(event) {
+						if (event.keyCode === 13) {
+							event.preventDefault();
+							document.getElementById("myBtn").click();
+						}
+					});
+				</script>
+			</div>
 		</div>
 		<text class="otherText">&nbsp;</text>
+		<div class="status">
+			<i class="material-icons">memory</i>
+			<b>CPU</b>
+			<u class="cpu">69%</u>
+			<b>Memory</b>
+			<u class="memory">9.6 GiB of 20.0 GiB</u>
+			<b>Storage</b>
+			<u class="storage">36.5 GiB of 1.95 TiB</u>
+
+		</div>
+
+		<script>
+			setInterval(() => {
+				fetch("https://ganer.xyz/@stats?" + Date.now())
+					.then(response => response.json())
+					.then(data => {
+						document.querySelector(".cpu").innerText = data.cpu + "%";
+						document.querySelector(".memory").innerText = data.ramUsed + " of " + data.totalRam;
+						document.querySelector(".storage").innerText = data.diskused + " of " + data.disksize;
+					});
+			}, 2000);
+		</script>
 	</body>
 </html>
