@@ -222,8 +222,8 @@ class MyHandler(SimpleHTTPRequestHandler):
                 text-align: center;
             }}
             .DB {{
-                width: 17%;
-                height: 8%;
+                width: 12%;
+                height: 6%;
                 background-color: rgb(54, 135, 125);
                 border: 0;
                 border-radius: 1vh;
@@ -237,7 +237,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             }}
             .txt {{
                 color: white;
-                font-size: 2.5vh;
+                font-size: 2vh;
                 text-align: center;
                 vertical-align: middle;
                 line-height: 8%;
