@@ -13,7 +13,7 @@ BASE_URL = "http://ganer.xyz/@"
 MSG_DISPLAY_LEN = 75
 TAGLINE = "discord.gg/8nKEEJn"
 
-if not os.path.isdir(p:=f"{DIRECTORY}/thumb"):
+if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
     print(f'Created directory "{p}"')
 
@@ -115,6 +115,7 @@ async def on_message(message):
     txt = message.content
     ltxt = txt.strip().lower()
     user = message.author
+    guildID = message.guild.id
 
     dil, sep = '*' if user == bot.user else '|', '\n'
     fmtTxt = f"{setLength(message.guild.name, 10)}/{setLength(message.channel.name, 10)}/{setLength(user.display_name, 10)}: {txt.strip().replace(sep,'^')}"
@@ -179,22 +180,29 @@ async def on_message(message):
 
         process = None
         args = None
+
         if len(ltxt) > 7 and ltxt[7] == 'i':
-            args = {'f': imageCorrupt, 
-                    'args': [uniqueID + '.' + oldExt, txt.strip()[8:]]}
+            args = {
+                'f': imageCorrupt, 
+                'args': [uniqueID + '.' + oldExt, txt.strip()[8:]],
+                'gid': guildID
+            }
         else:
-            args = {'f': videoEdit, 
-                    'args': [uniqueID + '.' + oldExt, txt.strip()[8:]]}
+            args = {
+                'f': videoEdit, 
+                'args': [uniqueID + '.' + oldExt, txt.strip()[8:]],
+                'gid': guildID
+            }
 
         def func():
             args2 = args.copy()
 
             if args2['f'] == imageCorrupt:
                 imageCorrupt(*args2['args'])
-                return [0, os.path.splitext(args2['args'][1])[0] + ".png"]
+                return [0, os.path.splitext(args2['args'][1])[0] + ".png", args2["gid"]]
             else:
                 videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120, HIDE_ALL_FFMPEG = False)
-                return [videoEditResult[0], newFile, videoEditResult[1:]]
+                return [videoEditResult[0], newFile, videoEditResult[1:], args2["gid"]]
 
         prc = await bot.loop.run_in_executor(None, func) #Ok so what all this BS does it like run the function which calls the subprocess in async and make a copy of all the important variables into the function which also serves as a time barrel and copys them over to use once the subprocess finsihes i am at like sbsfgdhiu;lj; no sleep pelase
         for i in range(1): #Super hacky way to add a break statment
@@ -211,12 +219,16 @@ async def on_message(message):
                     print(e)
                     await post(f"There was an error processing your file. Contact Ganer if you think this is an error.")
                     break
-                newLoc = f"{DIRECTORY}/{prc[1]}"
-                newURL = f"{BASE_URL}/{prc[1]}"
+
+                newDir = f"{DIRECTORY}/{prc[3]}"
+                newLoc = f"{newDir}/{prc[1]}"
+                newURL = f"{BASE_URL}/{prc[3]}/{prc[1]}"
+                thumbFold = f"{newDir}/thumb"
                 try:
+                    if not os.path.isdir(thumbFold):
+                        os.makedirs(thumbFold)
                     shutil.move(prc[1], newLoc)
                     if os.path.splitext(prc[1])[1] == ".mp4":
-                        thumbFold = f"{DIRECTORY}/thumb"
                         thumbLoc = f"{thumbFold}/{os.path.splitext(prc[1])[0]}.jpg"
                         os.system(f"ffmpeg -hide_banner -loglevel fatal -i {newLoc} -vframes 1 {thumbLoc}")
                         img = Image.open(thumbLoc)
@@ -230,7 +242,7 @@ async def on_message(message):
                     await post(f"The file was too large to upload to discord, backup link: {newURL}")
                 else:
                     try:
-                        await message.channel.send("Your autism, madam", files = [discord.File(newLoc)])
+                        await message.channel.send(random.choice(["h", "here ya go", "is this one as bad as the last one?", "هي لعبة الكترونية"]), files = [discord.File(newLoc)])
                     except Exception as e2:
                         try:
                             await post(f"The file was too large to upload to discord, backup link: {newURL}")

@@ -255,7 +255,6 @@ class MyHandler(SimpleHTTPRequestHandler):
     </body>
 </html>'''.encode('utf-8'))
         elif mode == "dirmode":
-
             dirFiles = [i for i in os.listdir(abspath) if i != "thumb" and os.path.splitext(i)[1][1:] not in ["db"]]
             def n(x):
                 try:
@@ -276,7 +275,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             if seg is not min(max(0, seg), pageCount):
                 newFiles = []
             else:
-                newFiles = dirFiles[seg * MAXDIRSIZE : (seg + 1) * MAXDIRSIZE]
+                newFiles = [i.replace('\\', '/').replace('//', '/') for i in dirFiles[seg * MAXDIRSIZE : (seg + 1) * MAXDIRSIZE]]
 
             TB, NL = '\t', '\n'
             prefix = f'''<meta charset="UTF-8">
