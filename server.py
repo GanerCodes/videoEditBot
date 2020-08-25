@@ -229,6 +229,8 @@ class MyHandler(SimpleHTTPRequestHandler):
                 border-radius: 1vh;
                 text-transform: uppercase;
                 margin: 0 auto;
+                transition: background-color 0.2s;
+                cursor: pointer;
                 font-family: Roboto, Segoe UI, sans-serif;
                 box-shadow: rgba(0, 0, 0, 0.14) 0px 2px 2px 0px, rgba(0, 0, 0, 0.12) 0px 3px 1px -2px, rgba(0, 0, 0, 0.2) 0px 1px 5px 0px;
             }}
@@ -240,9 +242,14 @@ class MyHandler(SimpleHTTPRequestHandler):
                 font-size: 2vh;
                 text-align: center;
                 vertical-align: middle;
-                line-height: 8%;
                 text-decoration: none;
+                font-weight: 500;
             }}
+            i {{
+			    vertical-align: middle;
+				line-height: 0;
+				margin-top: -6px;
+			}}
             .vid {{
                 padding-top: 5px;
             }}
