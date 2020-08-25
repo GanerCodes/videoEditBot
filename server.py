@@ -222,8 +222,8 @@ class MyHandler(SimpleHTTPRequestHandler):
                 text-align: center;
             }}
             .DB {{
-                width: 12%;
-                height: 6%;
+                width: 18vh;
+                height: 6vh;
                 background-color: rgb(54, 135, 125);
                 border: 0;
                 border-radius: 1vh;
@@ -248,7 +248,8 @@ class MyHandler(SimpleHTTPRequestHandler):
             i {{
 			    vertical-align: middle;
 				line-height: 0;
-				margin-top: -6px;
+				margin-top: -0.7vh;
+				font-size: 3vh;
 			}}
             .vid {{
                 padding-top: 5px;

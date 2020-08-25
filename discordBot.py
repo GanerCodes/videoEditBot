@@ -1,4 +1,5 @@
-import os, shutil, sys, io, random, discord, aiohttp, asyncio, threading, subprocess
+import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess
+from math import ceil
 from PIL import Image
 from fixPrint import fixPrint
 from destroyer import videoEdit
@@ -7,8 +8,9 @@ from imageCorrupt import imageCorrupt
 Popen = subprocess.Popen
 Thread = threading.Thread
 
+GUILD_MAX_USE_RATE = 5 #In seconds
 RESTRICTGUILDS = False
-DIRECTORY = "E:/Twitter/@"  #f"{os.getcwd()}/Twitter/@"
+DIRECTORY = "E:/Twitter/@"
 BASE_URL = "http://ganer.xyz/@"
 MSG_DISPLAY_LEN = 75
 TAGLINE = "discord.gg/8nKEEJn"
@@ -75,6 +77,7 @@ def trim(txt, l):
 def setLength(txt, l):
     return txt[:l - 1] + ("…" if len(txt) > l else "_" * (l - len(txt)))
 
+timedGuilds = []
 guildFile = open("guilds.txt", "r")
 guildList = guildFile.read().split('\n')
 
@@ -104,10 +107,12 @@ async def on_message(message):
         fixPrint(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
         return
 
+    guildID = message.guild.id
+
     if RESTRICTGUILDS:
-        if str(message.guild.id) not in guildList:
+        if str(guildID) not in guildList:
             await message.guild.leave()
-            fixPrint(f'"{message.guild.name}" not in guild ID list! leaving guild ID {message.guild.id}.')
+            fixPrint(f'"{message.guild.name}" not in guild ID list! leaving guild ID {guildID}.')
             return
 
     async def post(x):
@@ -116,7 +121,7 @@ async def on_message(message):
     txt = message.content
     ltxt = txt.strip().lower()
     user = message.author
-    guildID = message.guild.id
+    
 
     dil, sep = '*' if user == bot.user else '|', '\n'
     fmtTxt = f"{setLength(message.guild.name, 10)}/{setLength(message.channel.name, 10)}/{setLength(user.display_name, 10)}: {txt.strip().replace(sep,'^')}"
@@ -150,6 +155,20 @@ async def on_message(message):
         return
     
     if ltxt.strip().startswith("destroy"):
+
+        if not guildID in guildList:
+            currentTime = time.time()
+            for i, v in enumerate(timedGuilds):
+                if v["id"] == guildID:
+                    if v["time"] < currentTime:
+                        v["time"] = currentTime + GUILD_MAX_USE_RATE
+                    else:
+                        await post(f"Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
+                        return
+                    break
+            else:
+                timedGuilds.append({"id": guildID, "time": currentTime + GUILD_MAX_USE_RATE})
+
         attach = None
         if len(message.attachments) > 0:
             attach = message.attachments[0]
@@ -209,6 +228,8 @@ async def on_message(message):
         for i in range(1): #Super hacky way to add a break statment
             if prc[0] != None:
                 if prc[0] != 0:
+                    if os.path.isfile(prc[1]):
+                        os.remove(prc[1])
                     if len(prc[2]) < 1: 
                         await post(f"There was an error processing your file. Contact Ganer if you think this is an error. (code {prc[0]})")
                     else:
