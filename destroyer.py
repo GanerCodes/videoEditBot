@@ -738,7 +738,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         audio = ffmpeg.input(f"{pat}/{AUDPRE}{e0}.wav")
 
     if int(height) > 700 or int(width) % 2 != 0 or int(height) % 2 != 0:
-        video = video.filter("scale", "480", "trunc(ow/a/2)")        #filtText = "-vf scale=480:trunc(ow/a/2)*2 "
+        split = video.split()
+        video = split[0].filter("scale", "480", "trunc(ow/a/2)")        #filtText = "-vf scale=480:trunc(ow/a/2)*2 "
     video = video.filter("scale", w = "iw + mod(iw, 2)", h = "ih + mod(ih, 2)")
 
     s = applyBitrate('_', VBR = d['vbr'], ABR = d['abr'], **{'preset': 'veryfast'})
