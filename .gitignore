@@ -4,3 +4,4 @@ TOKENS.txt
 /*.jpg
 __pycache__
 active
+*.pem
