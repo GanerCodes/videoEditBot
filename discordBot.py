@@ -7,7 +7,7 @@ from imageCorrupt import imageCorrupt
 Popen = subprocess.Popen
 Thread = threading.Thread
 
-
+RESTRICTGUILDS = False
 DIRECTORY = "E:/Twitter/@"  #f"{os.getcwd()}/Twitter/@"
 BASE_URL = "http://ganer.xyz/@"
 MSG_DISPLAY_LEN = 75
@@ -104,10 +104,11 @@ async def on_message(message):
         fixPrint(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
         return
 
-    if str(message.guild.id) not in guildList:
-        await message.guild.leave()
-        fixPrint(f'"{message.guild.name}" not in guild ID list! leaving guild ID {message.guild.id}.')
-        return
+    if RESTRICTGUILDS:
+        if str(message.guild.id) not in guildList:
+            await message.guild.leave()
+            fixPrint(f'"{message.guild.name}" not in guild ID list! leaving guild ID {message.guild.id}.')
+            return
 
     async def post(x):
         await message.channel.send(x)
