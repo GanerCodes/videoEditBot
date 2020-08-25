@@ -8,7 +8,7 @@ from imageCorrupt import imageCorrupt
 Popen = subprocess.Popen
 Thread = threading.Thread
 
-GUILD_MAX_USE_RATE = 5 #In seconds
+GUILD_MAX_USE_RATE = 8 #In seconds
 RESTRICTGUILDS = False
 DIRECTORY = "E:/Twitter/@"
 BASE_URL = "http://ganer.xyz/@"
