@@ -3,7 +3,13 @@ Commands
 
 These are commands that the bot supports.
 
-| Command         | Shortname   | Type   | Min  | Max          | Description                                                                                         |
+A command is declared as `filtername=value`. For example, to add 100 bass boost, use `bass=100`.
+
+To chain multiple commands, use a comma `,` to separate them. For example, bass boost + hypercam would be `bass=100, hypercam`.
+
+You can also use pipes `|` to separate groups of commands to be processed. For example, `ytp=100|hcycle=3`.
+
+| Command         | Shorthand   | Type   | Min  | Max          | Description                                                                                         |
 |-----------------|-------------|--------|------|--------------|-----------------------------------------------------------------------------------------------------|
 | `abr`           | `abr`       | Number | 0    | 100          | Audio Bit Reduction - Reduces audio quality                                                         |
 | `bandicam`      | `bndc`      | -      | -    | -            | Adds a Bandicam watermark                                                                           |
