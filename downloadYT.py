@@ -1,33 +1,34 @@
-import youtube_dl, requests, os, re
+from pytube import YouTube
 from pydub import AudioSegment as AS
+from requests import get as req_get
+from pathHelper import *
+from re import search as re_search
 
 def downloadYT(name, url, skip, delay):
     if "t.co" in url:
-        url = requests.get(url).url
-    j = re.search(r"((youtu.be\/|youtube.com\/watch\?v=)[a-zA-Z0-9_-]{10,12})|[a-zA-Z0-9_-]{10,12}", url)
-    if j is not None: 
-        j = f"https://{'' if '/' in j.group(0) else 'youtu.be/'}{j.group(0)}"
-        ydl_opts = {
-            'format': 'bestaudio',
-            'outtmpl': f"{'BG' if (skip is None and delay is None) else 'TD'}{name}.wav",
-            'noplaylist': True,
-            'quiet': True,
-            'max-filesize': '20M'
-        }
-        ydl = youtube_dl.YoutubeDL(ydl_opts)
-        properties = ydl.extract_info(j, download = False)
-        if properties['duration'] < 600:
-            ydl.download([j])
-            if skip is not None or delay is not None:
-                track = AS.from_file(f"TD{name}.wav")
-                if skip is not None:
-                    startTime = skip * 1000
-                    if startTime > len(track) or startTime < 0:
-                        track = track.reverse()
-                    else:
-                        track = track[startTime:]
-                if delay is not None:
-                    track = AS.silent(duration = delay * 1000) + track
-                track.export(f"BG{name}.wav")
-                os.remove(f"TD{name}.wav")
-            return True
+        url = req_get(url).url
+
+    j = re_search(r"[a-zA-Z_\-0-9]{11,}", url)
+
+    if j is not None:
+        j = "https://youtu.be/" + j.group(0)
+    else:
+        raise Exception(f"Error attempting to phrase URL {url}")
+
+    dwn = YouTube(url)
+    if dwn.length > 500:
+        raise Exception("Video too long to download!")
+        
+    dwn.streams.filter(only_audio = True)[0].download(output_path = getDir(name), filename = f"TD{getName(name)}")
+
+    track = AS.from_file(f"{addPrefix(name, 'TD')}.mp4")
+    if skip is not None:
+        startTime = skip * 1000
+        if startTime > len(track) or startTime < 0:
+            track = track.reverse()
+        else:
+            track = track[startTime:]
+    if delay is not None:
+        track = AS.silent(duration = delay * 1000) + track
+    track.export(f"{addPrefix(name, 'BG')}.wav")
+    return True

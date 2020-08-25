@@ -1,5 +1,12 @@
-import itertools, shutil, random, ffmpeg, numpy, math, re, os
+from pathHelper import *
+from itertools import chain
+from shutil import rmtree
+from random import uniform, randint, shuffle as randshuf
 from pydub import AudioSegment as AS
+from math import ceil
+from re import sub as re_sub
+from os import listdir, system, path, rename, remove, mkdir
+
 
 NEWFPS = 30
 DUR = 30
@@ -31,16 +38,16 @@ class frameList:
 		return data in [i.loc for i in self.__iter__()]
 
 def shuffle(l):
-	random.shuffle(l)
+	randshuf(l)
 	return l
 
 def shuffle_slice(x, startIdx, endIdx):
 	for i in reversed(range(startIdx+1, endIdx)):
-		j = random.randint(startIdx, i)
+		j = randint(startIdx, i)
 		x[i], x[j] = x[j], x[i]
 
 def r(start, stop):
-	return int(random.uniform(start, stop))
+	return int(uniform(start, stop))
 
 def FBOA(l, a, v):
 	return next((x for x in l if x[a] == v), None)
@@ -49,27 +56,30 @@ def sortByList(list1, list2):
 	return [x for _, x in sorted(zip(list2, list1))]
 
 def reverseByChunks(l, s):
-	return list(itertools.chain.from_iterable([l[max(0, len(l)-i-s):min(len(l), len(l)-i)] for i in range(0, len(l), s)]))
+	return list(chain.from_iterable([l[max(0, len(l)-i-s):min(len(l), len(l)-i)] for i in range(0, len(l), s)]))
 
 def reverseChunks(l, s):
-	return list(itertools.chain.from_iterable([l[i+s:i:-1] for i in range(0, len(l), s)]))
+	return list(chain.from_iterable([l[i+s:i:-1] for i in range(0, len(l), s)]))
 
 def shuffleChunks(l, s):
-	return list(itertools.chain.from_iterable([l[i:i+s] for i in shuffle(list(range(math.ceil(len(l) / s))))]))
+	return list(chain.from_iterable([l[i:i+s] for i in shuffle(list(range(ceil(len(l) / s))))]))
 
 def stutter(name, para, hasAudio):
-	e = os.path.splitext(name)
-	fName = f"STUTTER_{e[0]}"
-	if os.path.isdir(fName):
-		shutil.rmtree(fName)
-	os.mkdir(fName)
-	os.system(f"ffmpeg {pre} -i {name} -qscale:v 4 -vf fps={NEWFPS} {fName}/frame%06d.jpg")
+	pat = getDir(name)
+	e = path.splitext(name)
+	e0 = getName(pat)
+
+	fName = f"{pat}/STUTTER_{e0}"
+	if path.isdir(fName):
+		rmtree(fName)
+	mkdir(fName)
+	system(f"ffmpeg {pre} -i {name} -qscale:v 4 -vf fps={NEWFPS} {fName}/frame%06d.jpg")
 	if hasAudio:
-		os.system(f"ffmpeg {pre} -i {name} {e[0]}.wav")
-	os.remove(name)
+		system(f"ffmpeg {pre} -i {name} {pat}/ST{e0}.wav")
+	remove(name)
 	if hasAudio:
-		audio = AS.from_wav(f"{e[0]}.wav")
-	files = os.listdir(fName)
+		audio = AS.from_wav(f"{pat}/ST{e0}.wav")
+	files = listdir(fName)
 	audioFrames = []
 	intv = 1000 / NEWFPS
 	
@@ -101,7 +111,7 @@ def stutter(name, para, hasAudio):
 
 	def filter_duplicate(loc, times, intv = 2):
 		times = constrain(times, 0, 120)
-		frames[loc:loc] = frames[loc:loc+intv] * math.ceil(times / max(1, intv))
+		frames[loc:loc] = frames[loc:loc+intv] * ceil(times / max(1, intv))
 		if hasAudio and para['audioDuplicate']:
 			for i in range(times):
 				if loc + i < len(frames):
@@ -122,16 +132,17 @@ def stutter(name, para, hasAudio):
 					newAudio += part[x]
 				part = newAudio
 			elif i.data == "duplicate":
-				part = (part[:para['audioDuplicate']] * math.ceil(len(part) / max(1, para['audioDuplicate'])))[:len(part)]
+				part = (part[:para['audioDuplicate']] * ceil(len(part) / max(1, para['audioDuplicate'])))[:len(part)]
 			audioFrames += part
 
 	with open(f"{fName}.txt", 'w+') as txt:
 		for i in frames:
-			txt.write(f"file '{fName}/{files[i.loc]}'\n")
+			txt.write(f"file '{getName(fName)}/{files[i.loc]}'\n")
 	if hasAudio:
 		audioFrames.export(f"{fName}.wav", format = "wav")
-	os.system(f"ffmpeg {pre} -r {NEWFPS} -f concat -i {fName}.txt {f'-i {fName}.wav' if hasAudio else ''} -vf fps={NEWFPS} -shortest -map 0:v {'-map 1:a?' if hasAudio else ''} {name}")
-	shutil.rmtree(fName)
+		
+	system(f"ffmpeg {pre} -safe 0 -r {NEWFPS} -f concat -i {fName}.txt {f'-i {fName}.wav' if hasAudio else ''} -vf fps={NEWFPS} -shortest -map 0:v {'-map 1:a?' if hasAudio else ''} {name}")
+	#rmtree(fName)
 
 def constrain(val, min_val, max_val):
     if val == None:
@@ -145,11 +156,11 @@ def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
 def intCeil(x):
-	return int(math.ceil(x))
+	return int(ceil(x))
 
 def stutterInputProcess(name, st, hasAudio = True, entireShuffle = False, dur = 30):
 	global DUR
-	st = re.sub(r"[^0-9.]", "", st)
+	st = re_sub(r"[^0-9.]", "", st)
 	DUR = float(dur)
 	preset = {
 		'reverse': 	 intCeil(2 * DUR / 30),

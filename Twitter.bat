@@ -1,5 +1,5 @@
 @ECHO OFF
 TITLE Twitter
 :loop
-python twitterBot.py
+python socketWrap.py "python -u twitterBot.py" 1
 goto loop
