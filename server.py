@@ -92,22 +92,17 @@ class MyHandler(SimpleHTTPRequestHandler):
         print("H - " + t)
 
     def do_GET(self):
+        ignoreOutput = False
+
         path, args, ext = getInfo(self)
-
         pathname = re.sub(r"^([\/,\. ]{1,})", '', path).replace('../', '')
-
         abspath = f"{os.getcwd()}/{pathname}".strip()
-
         if not abspath.lower().startswith(DIRNAME.replace('/','\\').lower()):
             abspath = f"{DIRNAME}/@error"
 
         CT = "text/html"
         code = 201
         mode = ""
-
-        #print(path, ext, args)
-
-        ignoreOutput = False
 
         if len(pathname.strip().replace('/', '')) < 1:
             mode = "index"
@@ -217,6 +212,11 @@ class MyHandler(SimpleHTTPRequestHandler):
         elif mode == "vidpage":
             self.wfile.write(f'''<html>
     <head>
+    	<title> Download Video </title>
+    	<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    		  rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+        
         <style>
             body {{
                 text-align: center;
@@ -224,14 +224,20 @@ class MyHandler(SimpleHTTPRequestHandler):
             .DB {{
                 width: 17%;
                 height: 8%;
-                background-color: #0096FF;
-                border: 3px solid white;
-                border-radius: 10px;
+                background-color: rgb(54, 135, 125);
+                border: 0;
+                border-radius: 1vh;
+                text-transform: uppercase;
                 margin: 0 auto;
+                font-family: Roboto, Segoe UI, sans-serif;
+                box-shadow: rgba(0, 0, 0, 0.14) 0px 2px 2px 0px, rgba(0, 0, 0, 0.12) 0px 3px 1px -2px, rgba(0, 0, 0, 0.2) 0px 1px 5px 0px;
+            }}
+            .DB:hover {{
+            	background-color: rgb(61, 153, 140);
             }}
             .txt {{
                 color: white;
-                font-size: 5vh;
+                font-size: 2.5vh;
                 text-align: center;
                 vertical-align: middle;
                 line-height: 8%;
@@ -252,7 +258,10 @@ class MyHandler(SimpleHTTPRequestHandler):
     </head>
     <body style="background-color:#000000;">
         <button class="DB">
-            <a class="txt" href="{path.split('/')[-1]}" id="download" download="video{random.randint(10000,100000)}.mp4">Download</a>
+            <a class="txt" href="{path.split('/')[-1]}" id="download" download="video{random.randint(10000,100000)}.mp4">
+            	<i class="material-icons left">save_alt</i>
+            	Download
+            </a>
         </button>
         <video controls autoplay width="100%" height="90%" class="vid">
             <source src="{path.split('/')[-1]}" type="video/mp4">
