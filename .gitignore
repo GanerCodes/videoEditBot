@@ -2,3 +2,5 @@
 TOKENS.txt
 *.mp4
 *.jpg
+__pycache__
+active
