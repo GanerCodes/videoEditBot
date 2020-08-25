@@ -137,7 +137,10 @@ class MyHandler(SimpleHTTPRequestHandler):
                 mode = "FILE"
                 CT = f"text"
         elif os.path.isdir(abspath):
-            mode = "dirmode"
+            if 'index.html' in os.listdir(abspath):
+                mode = "dirIndex"
+            else:
+                mode = "dirmode"
 
         if not ignoreOutput:
             print("G - " + (pathname if len(pathname) > 0 else "INDEX"))
@@ -147,12 +150,14 @@ class MyHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-type", CT)
             self.end_headers()
 
-        if mode == "index":
-            self.wfile.write(fileBytes(f"{parentDir}/index.html"))
+        if mode == "stats":
+            self.wfile.write(f'''{{"diskused":"{diskused}","disksize":"{disksize}","cpu":{cpu},"ramUsed":"{ramUsed}","totalRam":"{totalRam}"}}'''.encode('utf-8'))
         elif mode == "icon":
             self.wfile.write(fileBytes(f"{parentDir}/favicon.ico"))
-        elif mode == "stats":
-            self.wfile.write(f'''{{"diskused":"{diskused}","disksize":"{disksize}","cpu":{cpu},"ramUsed":"{ramUsed}","totalRam":"{totalRam}"}}'''.encode('utf-8'))
+        elif mode == "index":
+            self.wfile.write(fileBytes(f"{parentDir}/index.html"))
+        elif mode == "dirIndex":
+            self.wfile.write(fileBytes(f"{abspath}/index.html"))
         elif mode == "FILE":
             if os.path.isfile(abspath):
                 self.wfile.write(fileBytes(abspath))
