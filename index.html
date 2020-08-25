@@ -186,7 +186,7 @@
 
 		<script>
 			function updateStats() {
-				fetch("https://ganer.xyz/@stats?" + Date.now())
+				fetch(location.origin + "/@stats?" + Date.now())
 					.then(response => response.json())
 					.then(data => {
 						document.querySelector(".cpu").innerText = data.cpu + "%";
@@ -194,7 +194,7 @@
 						document.querySelector(".storage").innerText = data.diskused + " of " + data.disksize;
 					});
 			}
-			
+
 			setInterval(updateStats, 2000);
 			updateStats();
 		</script>
