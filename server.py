@@ -1,4 +1,4 @@
-import random, ssl, re, os
+import threading, shutil, psutil, random, time, ssl, re, os
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 DIRNAME = "E:/Twitter"
@@ -12,6 +12,8 @@ parentDir = os.getcwd()
 if not os.path.isdir(DIRNAME):
 	os.mkdir(DIRNAME)
 os.chdir(DIRNAME)
+
+driveLetter = os.path.abspath(DIRNAME).split('/', 1)[0]
 
 class strArr:
     def __init__(self, startArr):
@@ -35,6 +37,33 @@ def getInfo(s):
 
 def exists(s):
     return os.path.isfile(s) or os.path.isdir(s)
+
+def sizeof_fmt(num, suffix='B'): #https://stackoverflow.com/a/1094933
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f %s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f %s%s" % (num, 'Yi', suffix)
+
+def getSystemStats():
+    total, used, free = shutil.disk_usage(driveLetter)
+    memory = psutil.virtual_memory()
+    return (sizeof_fmt(used), sizeof_fmt(total), psutil.cpu_percent(), sizeof_fmt(memory.used), sizeof_fmt(memory.total))
+
+diskused, disksize, cpu, ramUsed, totalRam = getSystemStats()
+
+def updateMemory():
+    global cpu, ramUsed, totalRam
+    while 1:
+        try:
+            diskused, disksize, cpu, ramUsed, totalRam = getSystemStats()
+            time.sleep(1)
+        except Exception as e:
+            print(e)
+            time.sleep(1)
+
+systemStatUpdateThread = threading.Thread(target = updateMemory)
+systemStatUpdateThread.start()
 
 class MyHandler(SimpleHTTPRequestHandler):
     def copyfile(self, infile, outfile):
@@ -72,13 +101,13 @@ class MyHandler(SimpleHTTPRequestHandler):
         if not abspath.lower().startswith(DIRNAME.replace('/','\\').lower()):
             abspath = f"{DIRNAME}/@error"
 
-        print("G - " + (pathname if len(pathname) > 0 else "INDEX"))
-
         CT = "text/html"
         code = 201
         mode = ""
 
         #print(path, ext, args)
+
+        ignoreOutput = False
 
         if len(pathname.strip().replace('/', '')) < 1:
             mode = "index"
@@ -86,6 +115,10 @@ class MyHandler(SimpleHTTPRequestHandler):
             mode = "icon"
             CT = "image/x-icon"
             code = 200
+        elif pathname == "@stats":
+            mode = "stats"
+            code = 200
+            ignoreOutput = True
         elif "range" in self.headers and exists(abspath):
             mode = "vidpart"
             CT = None
@@ -106,6 +139,9 @@ class MyHandler(SimpleHTTPRequestHandler):
         elif os.path.isdir(abspath):
             mode = "dirmode"
 
+        if not ignoreOutput:
+            print("G - " + (pathname if len(pathname) > 0 else "INDEX"))
+
         if CT:
             self.send_response(code)
             self.send_header("Content-type", CT)
@@ -115,6 +151,8 @@ class MyHandler(SimpleHTTPRequestHandler):
             self.wfile.write(fileBytes(f"{parentDir}/index.html"))
         elif mode == "icon":
             self.wfile.write(fileBytes(f"{parentDir}/favicon.ico"))
+        elif mode == "stats":
+            self.wfile.write(f'''{{"diskused":"{diskused}","disksize":"{disksize}","cpu":{cpu},"ramUsed":"{ramUsed}","totalRam":"{totalRam}"}}'''.encode('utf-8'))
         elif mode == "FILE":
             if os.path.isfile(abspath):
                 self.wfile.write(fileBytes(abspath))
