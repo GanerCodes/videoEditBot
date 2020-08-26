@@ -254,6 +254,9 @@ class MyHandler(SimpleHTTPRequestHandler):
             .vid {{
                 padding-top: 5px;
             }}
+            video:focus {{
+            	outline: 0;
+            }}
         </style>
         <script>
             document.addEventListener("keydown", function(e) {{
