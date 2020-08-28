@@ -1,11 +1,10 @@
+
 import sys, time, socket, threading, subprocess
 
+HOST, PORT = 0.0.0.0, 8080 #IP and port you want to send logs to
 
-HOST = "70.178.231.15"
-PORT = 8080
-ID = sys.argv[2]
-process = sys.argv[1]
 
+process, ID = sys.argv[1], sys.argv[2]
 
 def tryConn():
     s.connect((HOST, PORT))
