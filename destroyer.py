@@ -303,12 +303,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         fixPrint("Error near 302:", ex)
         pass
 
-    orderedVideoFX = sorted(filter(lambda x: notNone(d[x]), videoFX), key=getOrder)
-    orderedAudioFX = sorted(filter(lambda x: notNone(d[x]), audioFX), key=getOrder)
-
-    if "mute" in orderedAudioFX:
-        orderedAudioFX = orderedAudioFX[orderedAudioFX.index("mute"):]
-
     startText, endText = "", ""
     if notNone(d['start']):
         d['start'] = constrain(float(d['start']), 0, 30000) + 3.5 / 30
@@ -361,6 +355,11 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         if notNone(d['holdframe']):
             makeAudio("HFA", d['holdframe'])
             audio = ffmpeg.input(f"{pat}/HFA{e0}.wav")
+
+    orderedVideoFX = sorted(filter(lambda x: notNone(d[x]), videoFX), key=getOrder)
+    orderedAudioFX = sorted(filter(lambda x: notNone(d[x]), audioFX), key=getOrder)
+    if "mute" in orderedAudioFX:
+        orderedAudioFX = orderedAudioFX[orderedAudioFX.index("mute"):]
 
     s = ffmpeg.input(file)
 

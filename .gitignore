@@ -2,6 +2,10 @@ TOKENS.txt
 /*.mp4
 /*.jpg
 /*.png
+/*.webm
+/*.mov
+/*.wav
+/*.f251
 __pycache__
 active
 *.pem

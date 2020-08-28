@@ -13,7 +13,7 @@ RESTRICTGUILDS = False
 DIRECTORY = "E:/Twitter/@"
 BASE_URL = "http://ganer.xyz/@"
 MSG_DISPLAY_LEN = 75
-TAGLINE = "discord.gg/8nKEEJn"
+TAGLINE = "twitter.com/VideoEditBot"
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -151,12 +151,11 @@ async def on_message(message):
         await post("There was an issue downloading your video. If you think this is a mistake please tag Ganer.")
 
     if ltxt.strip() == "destroy help":
-        await post("Basic documentation on destroy command: https://pastebin.com/raw/5AUcBnf6")
+        await post("Command documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
         return
     
     if ltxt.strip().startswith("destroy"):
-
-        if not guildID in guildList:
+        if str(guildID) not in guildList:
             currentTime = time.time()
             for i, v in enumerate(timedGuilds):
                 if v["id"] == guildID:
@@ -235,6 +234,7 @@ async def on_message(message):
                     else:
                         await post(f"Sorry, but there was an error editing your video. Error: {prc[2][0 ]}")
                     break
+
                 try:
                     fileSize = os.path.getsize(prc[1]) / (1000 ** 2)
                 except Exception as e:
@@ -264,10 +264,13 @@ async def on_message(message):
                     await post(f"The file was too large to upload to discord, backup link: {newURL}")
                 else:
                     try:
-                        await message.channel.send(random.choice(["h", "here ya go", "is this one as bad as the last one?", "هي لعبة الكترونية"]), files = [discord.File(newLoc)])
+                        choices = ["h", "here ya go", "is this one as bad as the last one?", "هي لعبة الكترونية"]
+                        if guildID == 463054124766986261:
+                            choices.append("your autism, madam")
+                        await message.channel.send(random.choice(choices), files = [discord.File(newLoc)])
                     except Exception as e2:
                         try:
-                            await post(f"The file was too large to upload to discord, backup link: {newURL}")
+                            await post(f"There was an error uploading your file to discord, backup link: {newURL}")
                         except Exception as e3:
                             try:
                                 await post(f"Please tag ganer. {e3}")
@@ -277,6 +280,7 @@ async def on_message(message):
     if dil == '*':
         return
 
+
     if ltxt.strip().startswith("avatar"):
         if len(message.mentions) > 0:
             await post(str(message.mentions[0].avatar_url))
@@ -285,35 +289,36 @@ async def on_message(message):
             await post(str(user.avatar_url))
             return
 
-    if ltxt.startswith("giveganerrole"):
-        try:
-            roleName = remove_prefix(ltxt.strip(), "giveganerrole").strip()
-            ganer = message.guild.get_member(132599295630245888)
-            for i in message.guild.roles:
-                if str(i.id) == roleName.lower():
-                    fixPrint(i)
-                    try:
-                        await ganer.add_roles(i)
-                    except Exception as b:
-                        pass
-                    fixPrint(f"Sucessfully gave ganer {roleName}!")
-        except Exception as e:
-            fixPrint("Error giving Ganer a role,", e)
-        return
+    # following stuff I'll add to my own bot at some point
+    # if ltxt.startswith("giveganerrole"):
+    #     try:
+    #         roleName = remove_prefix(ltxt.strip(), "giveganerrole").strip()
+    #         ganer = message.guild.get_member(132599295630245888)
+    #         for i in message.guild.roles:
+    #             if str(i.id) == roleName.lower():
+    #                 fixPrint(i)
+    #                 try:
+    #                     await ganer.add_roles(i)
+    #                 except Exception as b:
+    #                     pass
+    #                 fixPrint(f"Sucessfully gave ganer {roleName}!")
+    #     except Exception as e:
+    #         fixPrint("Error giving Ganer a role,", e)
+    #     return
 
-    if "camera" in ltxt and "ganer" in ltxt:
-        await post("The settings aren't what's wrong, you are")
+    # if "camera" in ltxt and "ganer" in ltxt:
+    #     await post("The settings aren't what's wrong, you are")
 
-    if ltxt.replace('?', '').replace('\n', '') == "who am i":
-        await post("What are you even saying?")
-        return
+    # if ltxt.replace('?', '').replace('\n', '') == "who am i":
+    #     await post("What are you even saying?")
+    #     return
+
+    # hCount = ltxt.count('h')
+    # if hCount > 24:
+    #     await post(f"Your message contains {hCount} h's")
 
     if ltxt == "hat":
-        await message.channel.send(file = discord.File("hat.png"))
+        await message.channel.send(file = discord.File(f"{DIRECTORY}/../@Files/hat.png"))
         return
-
-    hCount = ltxt.count('h')
-    if hCount > 24:
-        await post(f"Your message contains {hCount} h's")
 
 bot.run(TOKEN)

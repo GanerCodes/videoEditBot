@@ -1,4 +1,4 @@
-from pytube import YouTube
+import youtube_dl
 from pydub import AudioSegment as AS
 from requests import get as req_get
 from pathHelper import *
@@ -8,20 +8,33 @@ def downloadYT(name, url, skip, delay):
     if "t.co" in url:
         url = req_get(url).url
 
-    j = re_search(r"[a-zA-Z_\-0-9]{11,}", url)
-
-    if j is not None:
+    if (j := re_search(r"[a-zA-Z_\-0-9]{11,}", url)):
         j = "https://youtu.be/" + j.group(0)
     else:
         raise Exception(f"Error attempting to phrase URL {url}")
 
-    dwn = YouTube(url)
-    if dwn.length > 500:
-        raise Exception("Video too long to download!")
-        
-    dwn.streams.filter(only_audio = True)[0].download(output_path = getDir(name), filename = f"TD{getName(name)}")
+    exportName = f"{getDir(name)}/TD{getName(name)}.wav"
 
-    track = AS.from_file(f"{addPrefix(name, 'TD')}.mp4")
+    ydl_opts = {
+        'format': 'bestaudio',
+        'outtmpl': exportName,
+        'noplaylist': True,
+        'quiet': True,
+        'max-filesize': '20M'
+    }
+    ydl = youtube_dl.YoutubeDL(ydl_opts)
+    properties = ydl.extract_info(j, download = False)
+    if properties["duration"] > 600:
+        raise Exception("Video too long to download!")
+    ydl.download([j])
+
+    # ydl = youtube_dl.YoutubeDL(ydl_opts)
+    # dwn = YouTube(url)
+    # if dwn.length > 500:
+    #     raise Exception("Video too long to download!")
+    # dwn.streams.filter(only_audio = True)[0].download(output_path = getDir(name), filename = f"TD{getName(name)}")
+
+    track = AS.from_file(exportName)
     if skip is not None:
         startTime = skip * 1000
         if startTime > len(track) or startTime < 0:
