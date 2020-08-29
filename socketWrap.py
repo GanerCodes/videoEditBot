@@ -1,8 +1,7 @@
-
 import sys, time, socket, threading, subprocess
+from getSens import getSens
 
-HOST, PORT = 0.0.0.0, 8080 #IP and port you want to send logs to
-
+HOST, PORT = getSens("log_ip")[0], 8080 #IP and port you want to send logs to
 
 process, ID = sys.argv[1], sys.argv[2]
 

@@ -3,6 +3,7 @@ from imageCorrupt import imageCorrupt
 from destroyer import videoEdit
 from threadQue import *
 from fixPrint import fixPrint
+from getSens import getSens
 from random import randrange as r, choice as rc
 from PIL import Image
 Thread = threading.Thread
@@ -18,21 +19,7 @@ if not os.path.isdir(DIRECTORY):
 
 que = threadQue(l = True)
 
-def formatKey(l):
-	return l.split('=')[1].strip().replace('"', '')
-
-consumer_key, consumer_secret, access_key, access_secret = "", "", "", ""
-with open("TOKENS.txt") as f:
-	for line in f:
-		ll = line.lower()
-		if "consumer_key" in ll:
-			consumer_key = 		formatKey(line)
-		elif "consumer_secret" in ll:
-			consumer_secret =	formatKey(line)
-		elif "access_key" in ll:
-			access_key =		formatKey(line)
-		elif "access_secret" in ll:
-			access_secret =		formatKey(line)
+consumer_key, consumer_secret, access_key, access_secret = getSens("consumer_key", "consumer_secret", "access_key", "access_secret")
 
 def makeApi(access_key, access_secret):
 	authorization = tweepy.OAuthHandler(consumer_key, consumer_secret)

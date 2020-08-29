@@ -6,14 +6,16 @@ Requires:
  - Ffmpeg
  - Sox
 
-Make sure to add a "guilds.txt" with with a list of discord guild ID's that you want your bot to be able to join (seperated by newlines)
-
-Also, create a file called "TOKENS.txt" and add tokens in this format:
+Create a file called "TOKENS.txt" and add sensitive info in this format:
 ```
 discord = XXX
+
+guilds = XXX, XXX, XXX...
 
 consumer_key = XXX
 consumer_secret = XXX
 access_key = XXX
 access_secret = XXX
+
+log_ip = 0.0.0.0
 ```

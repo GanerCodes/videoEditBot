@@ -1,6 +1,7 @@
 import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess
-from math import ceil
 from PIL import Image
+from math import ceil
+from getSens import getSens
 from fixPrint import fixPrint
 from destroyer import videoEdit
 from threadQue import *
@@ -33,11 +34,8 @@ class ThreadWithReturnValue(Thread):
 def formatKey(l):
     return l.split('=')[1].strip().replace('"', '')
 
-TOKEN = ""
-with open("TOKENS.txt") as f:
-    for line in f:
-        if "discord" in line.lower():
-            TOKEN = formatKey(line)
+TOKEN, guilds = getSens("discord", "guilds")
+guildList = [i.strip() for i in guilds.split(',')]
 
 def UFID(ID, l):
     random.seed(ID)
@@ -78,8 +76,6 @@ def setLength(txt, l):
     return txt[:l - 1] + ("…" if len(txt) > l else "_" * (l - len(txt)))
 
 timedGuilds = []
-guildFile = open("guilds.txt", "r")
-guildList = guildFile.read().split('\n')
 
 bot = discord.Client()
 
