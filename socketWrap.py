@@ -5,16 +5,15 @@ HOST, PORT = getSens("log_ip")[0], 8080 #IP and port you want to send logs to
 
 process, ID = sys.argv[1], sys.argv[2]
 
-def tryConn():
-    s.connect((HOST, PORT))
-
 canCom = 0
+
 s = socket.socket()
-s.settimeout(1)
 
 def tryConn():
     global s
     try:
+        s = socket.socket()
+        s.settimeout(1)
         s.connect((HOST, PORT))
         return True
     except Exception as e:
@@ -31,19 +30,16 @@ def sendMsg(msg):
         if tryConn():
             s.sendall(msg)
         else:
-            canCom = 5
+            canCom = 10
 
 def threadMsg(msg):
     t = threading.Thread(target = sendMsg, args = (msg, ))
     t.start()
 
 def send(msg):
-    global canCom, s
-
-    if canCom < 1:
-        threadMsg(msg)
-    else:
-        canCom -= 1
+    global canCom
+    if    canCom < 1: threadMsg(msg)
+    else: canCom -= 1
 
 proc = subprocess.Popen(process.split(' '), stdout = subprocess.PIPE, universal_newlines = True, shell = True)
 while proc.poll() is None:
