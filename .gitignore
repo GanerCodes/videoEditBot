@@ -10,5 +10,6 @@ __pycache__
 active
 *.pem
 guilds.txt
+cookies.txt
 *.part
 *.ytdl

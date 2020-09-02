@@ -3,6 +3,7 @@ from pydub import AudioSegment as AS
 from requests import get as req_get
 from pathHelper import *
 from re import search as re_search
+from os.path import isfile
 
 def downloadYT(name, url, skip, delay):
     if "t.co" in url:
@@ -22,17 +23,14 @@ def downloadYT(name, url, skip, delay):
         'quiet': True,
         'max-filesize': '20M'
     }
+
+    if isfile((f:="cookies.txt")): ydl_opts['cookiefile'] = f
+
     ydl = youtube_dl.YoutubeDL(ydl_opts)
     properties = ydl.extract_info(j, download = False)
     if properties["duration"] > 600:
         raise Exception("Video too long to download!")
     ydl.download([j])
-
-    # ydl = youtube_dl.YoutubeDL(ydl_opts)
-    # dwn = YouTube(url)
-    # if dwn.length > 500:
-    #     raise Exception("Video too long to download!")
-    # dwn.streams.filter(only_audio = True)[0].download(output_path = getDir(name), filename = f"TD{getName(name)}")
 
     track = AS.from_file(exportName)
     if skip is not None:

@@ -9,83 +9,44 @@ def drawTextWithOutline(canvas, text, x, y, out, font, outline = True, inColor =
             for o in range(-out, out + 1):
                 if (i == 0) or (o == 0):
                     continue
-                canvas.text((x + i, y + o), text, outColor, font = font, **kwargs)
-    canvas.text((x, y), text, inColor, font = font, **kwargs)
+                canvas.text((int(x + i), int(y + o)), text, outColor, font = font, **kwargs)
+    canvas.text((int(x), int(y)), text, inColor, font = font, embedded_color = True, **kwargs)
     return
 
 def drawText(img, text, pos, leftAlign = False, mode = "impact", **kwargs):
     canvas = ImageDraw.Draw(img)
     if mode == "impact":
         FS = int((img.width / 6) / (1 + (min(4, len(text) / 58))))
-        font = ImageFont.truetype("impact.ttf", FS)
+        font = ImageFont.truetype("impact_emoji.ttf", FS)
     elif mode == "cap":
         FS = int((img.width / (6 + (len(text) / 10))))
-        font = ImageFont.truetype("Futura Condensed Extra Bold.otf", FS)
+        font = ImageFont.truetype("cap_emoji.ttf", FS)
         kwargs['outline'] = False
         kwargs['inColor'] = (0, 0, 0)
     elif mode == "normalcap":
         FS = int(img.width / 15)
-        font = ImageFont.truetype("arialbd.ttf", FS)
+        #font = ImageFont.truetype("arialbd.ttf", FS)
+        font = ImageFont.truetype("seguiemj.ttf", FS)
         kwargs['outline'] = False
         kwargs['inColor'] = (0, 0, 0)
     else:
         raise Exception("Mode not available!")
 
-    text = textwrap.fill(text, int(2 * img.width / FS))
-
-    for i in [r"\n", '^']:
-        text = text.replace(i, ' ' * 100)
-
     w, h = canvas.textsize(text, font)
-    lineCount = 1
-    if w > img.width:
-        lineCount = int(round((w / img.width) + 1))
+    text = textwrap.fill(text, 2 * int(img.width / FS))
+    for i in [r"\n", '^']:
+        text = text.replace(i, '\n')
+    lines = text.split('\n')
 
-    lines = []
-    if lineCount > 1:
-
-        lastCut = 0
-        isLast = False
-        for i in range(lineCount):
-            if lastCut == 0:
-                cut = (len(text) / lineCount) * i
-            else:
-                cut = lastCut
-
-            if i < lineCount-1:
-                nextCut = (len(text) / lineCount) * (i+1)
-            else:
-                nextCut = len(text)
-                isLast = True
-
-            if nextCut == len(text) or text[int(nextCut)] in [" ", "\n"]:
-                pass
-            else:
-                while (int(nextCut) < len(text) and not text[int(nextCut)] in [" ", "\n"]):
-                    nextCut += 1
-
-            line = text[int(cut):int(nextCut)].strip()
-
-            w, h = canvas.textsize(line, font)
-            if not isLast and w > img.width:
-                nextCut -= 1
-                if len(text) > 0:
-                    while text[min(int(nextCut), len(text) - 1)] != " ":
-                        nextCut -= 1
-                        if nextCut < 0:
-                            break
-            lastCut = nextCut
-            lines.append(text[int(cut):int(nextCut)].strip())
-    else:
-        lines.append(text)
-
-    lastY = -h
+    lastY = -FS / 2
     if pos == "bottom":
-        lastY = img.height - h * (lineCount+1)
+        lastY = img.height - h * (len(lines) + 1) - FS / 6
+    elif pos == "top":
+        lastY += FS / 5.5
 
     tmpX = lastY + h
 
-    for i in range(0, lineCount):
+    for i in range(0, len(lines)):
         w, h = canvas.textsize(lines[i], font)
         h = h * 1.1
         if leftAlign:
@@ -164,15 +125,17 @@ def poster(width, height, cap = None, bottomcap = None):
     bb += int(MP / 40)
 
     bottom = None
+
+    fName = "times_emoji.ttf"
     if cap:
-        font = ImageFont.truetype("times", int(MP / 10))
+        font = ImageFont.truetype(fName, int(MP / 10))
         w, h = canvas.textsize(cap, font = font)
-        canvas.text(((newSize[0] - w) / 2, bb), cap, font = font, align = "center")
+        canvas.text((int((newSize[0] - w) / 2), int(bb)), cap, font = font, embedded_color = True, align = "center")
         bottom = bb + h
     if bottomcap:
-        font = ImageFont.truetype("times", int(MP / 20))
+        font = ImageFont.truetype(fName, int(MP / 20))
         smallW, smallH = canvas.textsize(bottomcap, font = font)
-        canvas.text(((newSize[0] - smallW) / 2, nb:=(bottom + 0.02 * MP if bottom else int(bb + MP / 9.5))), bottomcap, font = font, align = "center")
+        canvas.text((int((newSize[0] - smallW) / 2), int(nb:=(bottom + 0.02 * MP if bottom else int(bb + MP / 9.5)))), bottomcap, font = font, embedded_color = True, align = "center")
         bottom = nb + smallH
 
     if cap or bottomcap:

@@ -13,8 +13,9 @@ GUILD_MAX_USE_RATE = 8 #In seconds
 RESTRICTGUILDS = False
 DIRECTORY = "E:/Twitter/@"
 BASE_URL = "http://ganer.xyz/@"
+DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = "twitter.com/VideoEditBot"
+TAGLINE = "Working on bug fixes"#"twitter.com/VideoEditBot"
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -99,8 +100,11 @@ async def on_message(message):
     #         await member.ban(reason="lol", delete_message_days=7)
     #         fixPrint("Ban?")
 
-    if message.guild == None:
-        fixPrint(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
+    if DISPLAY_MESSAGES:
+        if message.guild == None:
+            fixPrint(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
+            return
+    elif message.guild == None:
         return
 
     guildID = message.guild.id
@@ -121,7 +125,8 @@ async def on_message(message):
 
     dil, sep = '*' if user == bot.user else '|', '\n'
     fmtTxt = f"{setLength(message.guild.name, 10)}/{setLength(message.channel.name, 10)}/{setLength(user.display_name, 10)}: {txt.strip().replace(sep,'^')}"
-    fixPrint(f'''{dil}\t{trim(fmtTxt, MSG_DISPLAY_LEN)}''')
+    if DISPLAY_MESSAGES:
+        fixPrint(f'''{dil}\t{trim(fmtTxt, MSG_DISPLAY_LEN)}''')
 
     try:
         t = [len(i) for i in ["download", "downloader"] if ltxt.strip().startswith(i)]
@@ -173,13 +178,22 @@ async def on_message(message):
                 if len(msg.attachments) > 0:
                     attach = msg.attachments[0]
                     break
+        if not attach:
+            await post("Could not find a video or image in the last 25 messages.")
+            return
         e = os.path.splitext(attach.filename)
         oldExt = e[1].lower()[1:]
 
         newExt = None
-        if oldExt in ["mp4", "mov", "webm", "gif"] or "tovid" in txt.lower():
+        isImage = oldExt in ["png", "jpg", "jpeg"]
+        if "tovid" in txt.lower():
             newExt = "mp4"
-        elif oldExt in ["png", "jpg", "jpeg"]:
+        elif oldExt in ["mp4", "mov", "webm", "gif"]:
+            if "togif" in txt.lower() and not isImage:
+                newExt = "gif"
+            else:
+                newExt = "mp4"
+        elif isImage:
             newExt = "png"
         else:
             await post("File format unavailable.\nFile format list: webm, mp4, mov, gif, jpg/jpeg, png")

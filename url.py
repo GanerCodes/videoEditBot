@@ -1,12 +1,13 @@
 import subprocess, sys, os
 from urllib.parse import urlparse
 
+tt = f'--cookies "{f}"' if os.path.isfile(f := "cookies.txt") else ""
 url  = sys.argv[1]
 name = sys.argv[2]
 
 o = urlparse(url)
 if any([i in o.netloc for i in ["youtube", "youtu.be"]]):
-	subprocess.call(f'''youtube-dl --quiet --geo-bypass --max-filesize 25M --merge-output-format mp4 -r 5M -f best[filesize<25M] -o DOWNLOAD{name}.mp4 "{url}"''')
+	subprocess.call(f'''youtube-dl --quiet --geo-bypass --max-filesize 25M {tt} --merge-output-format mp4 -r 5M -f best[filesize<25M] -o DOWNLOAD{name}.mp4 "{url}"''')
 else:
 	subprocess.call(f'''youtube-dl --quiet --geo-bypass --max-filesize 25M --merge-output-format mp4 -r 5M -o DOWNLOAD{name}.mp4 "{url}"''')
 

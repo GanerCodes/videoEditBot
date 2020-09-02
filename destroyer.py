@@ -157,6 +157,7 @@ def phraseArgs(args, par):
                 continue
             if len(args[g][p]) == 1:
                 args[g][p].append("1")
+            args[g][p][0] = args[g][p][0].lower()
 
             if args[g][p][0] in par:
                 pass
@@ -219,7 +220,7 @@ def timecodeBreak(file, m):
     new = open(file, 'wb')
     new.write(byteData)
 
-def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
+def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
     videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
@@ -297,8 +298,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     filtText = ""
     try:
         width, height = getSize(file)
-        if int(width) > 480 or int(width) % 2 != 0 or int(height) % 2 != 0:
-            filtText = "-vf scale=480:trunc(ow/a/2)*2 "
+        if int(width + height) > 800 or int(width) % 2 != 0 or int(height) % 2 != 0:
+            filtText = "-vf scale=2*ceil(trunc(iw*480/ih)/2):480 "
     except Exception as ex:
         fixPrint("Error near 302:", ex)
         pass
@@ -312,12 +313,12 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         d['end'] =   constrain(float(d['end'  ]), 0, 30000)
         ET = d['end']
         endText = f"-to {max(0.1, d['end'])} "
-    system(f"ffmpeg -hide_banner -loglevel fatal -i {e[0]}{e[1]} {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/RFM{e0}.mp4")
+    system(f"ffmpeg -hide_banner -loglevel error -i {e[0]}{e[1]} {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/RFM{e0}.mp4")
     if notNone(d['selection']):
         if ST:
-            system(f"ffmpeg -hide_banner -loglevel fatal -i {e[0]}{e[1]} -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/START_{e0}.mp4")
+            system(f"ffmpeg -hide_banner -loglevel error -i {e[0]}{e[1]} -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/START_{e0}.mp4")
         if ET:
-            system(f"ffmpeg -hide_banner -loglevel fatal -i {e[0]}{e[1]} -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/END_{e0}.mp4")
+            system(f"ffmpeg -hide_banner -loglevel error -i {e[0]}{e[1]} -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/END_{e0}.mp4")
 
     remove(file)
     file = f"{pat}/{e0}.mp4"
@@ -339,11 +340,15 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         system(f"ffmpeg -hide_banner -loglevel fatal -i {newName} -frames:v 1 {pat}/FIRST_FRAME_{e0}.png")
         video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, t = d['holdframe'])
         DURATION = d['holdframe']
-    
-    if toVideo or hhh == "null" or hhh.strip() == "" or "no streams" in hhh:
+
+    if toGif or toVideo or hhh == "null" or hhh.strip() == "" or "no streams" in hhh:
         vidHasAudio = False
 
-    if not vidHasAudio:
+    if toGif:
+        vidHasAudio = False
+        hasAudio = False
+        removeAudioFilters()
+    elif not vidHasAudio:
         if (notNone(d['sfx']) or notNone(d['music'])):
             makeAudio("GEN", DURATION)
             audio = ffmpeg.input(f"{pat}/GEN{e0}.wav")
@@ -736,9 +741,9 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
         audio = ffmpeg.input(f"{pat}/{AUDPRE}{e0}.wav")
 
-    if int(height) > 700 or int(width) % 2 != 0 or int(height) % 2 != 0:
+    if int(width + height) > 800 or int(width) % 2 != 0 or int(height) % 2 != 0:
         split = video.split()
-        video = split[0].filter("scale", "480", "trunc(ow/a/2)")        #filtText = "-vf scale=480:trunc(ow/a/2)*2 "
+        video = split[0].filter("scale", "2*ceil(trunc(iw*480/ih)/2)", "480")
     video = video.filter("scale", w = "iw + mod(iw, 2)", h = "ih + mod(ih, 2)")
 
     s = applyBitrate('_', VBR = d['vbr'], ABR = d['abr'], **{'preset': 'veryfast'})
@@ -834,7 +839,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         d['timecode'] = int(constrain(d['timecode'], 1, 4))
         timecodeBreak(newName, d['timecode'])
 
-    elif oldFormat in imageArray and not toVideo:
+
+    if (isImage := (oldFormat in imageArray and not toVideo)):
         properFileName = e[0] + ".png"
         system(f'''ffmpeg -y -hide_banner -loglevel fatal -i {newName} -ss 0 -vframes 1 {properFileName}''')
         remove(newName)
@@ -842,6 +848,18 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     else:
         properFileName = e[0] + ".mp4"
         newExt = "mp4"
+    
+    if toGif and not isImage:
+        properFileName = e[0] + ".gif"
+        newExt = "gif"
+        qui(
+            ffmpeg.filter(
+                [ffmpeg.input(newName), ffmpeg.input(newName).filter("palettegen")],
+                filter_name="paletteuse"
+            ).filter("fps", fps = 15).output(e[0] + ".gif", loop = 60000)
+        ).run()
+        remove(newName)
+
 
     return newExt
 
@@ -904,14 +922,16 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "watermark"     :[V, int(r(0, 100))      , "wtm"]
     }
 
-    to_vid = {}
+    kwargs = {}
     if 'tovid' in args.lower():
-        to_vid = {'toVideo': 10}
+        kwargs['toVideo'] = 10
+    if 'togif' in args.lower():
+        kwargs['toGif'] = 10
 
     args = phraseArgs(args, par)
 
     randomSel = ''
-    if len(args) == 0 or len(args[0]) == 0:
+    if len(args) == 0 or len(args[0]) == 0 and len(kwargs) == 0:
         if allowRandom:
             args = [[{'name': v, 'value': (float(par[v][1]) if par[v][0] == V else str(par[v][1])), 'order': i} for i, v in enumerate(par) if (notNone(par[v][1]) and r(0, 7) < 1)]]
             randomSel = " (Randomly selected)"
@@ -943,7 +963,7 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
             oldFileName = chExt(newFileName, newExt)
             newFileName = chName(properFileName, f"{i}_{chExt(properFileName, newExt)}") #f"{i}_{chExt(properFileName, newExt)}"
             rename(f"{newPath}/{oldFileName}", f"{newPath}/{newFileName}")
-            newExt = destroy(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **to_vid)
+            newExt = destroy(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **kwargs)
         
         #chdir(parentPath) #NOTE
         rename(f"{newPath}/{chExt(newFileName, newExt)}", f"{parentPath}/{chExt(properFileName, newExt)}")
@@ -951,6 +971,7 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         success = True
     except Exception as ex:
         fixPrint(f'Destroyer error!')
+        fixPrint("Args were:", strArgs(args))
         printEx(ex)
 
     if SHOWTIMER:

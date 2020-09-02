@@ -19,3 +19,5 @@ access_secret = XXX
 
 log_ip = 0.0.0.0
 ```
+
+There is also an optional "cookies.txt" file you can add that youtube-dl will use
