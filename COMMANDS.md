@@ -38,6 +38,7 @@ You can also use pipes `|` to separate groups of commands to be processed. For e
 | `mute`          | `mt`        | -      | -    | -            | Mutes the audio                                                                                     |
 | `normalcaption` | `nc`        | Text   | -    | -            | Standard caption at the top, like in screenshotted twitter posts.                                   |
 | `pitch`         | `pch`       | Number | -100 | 100          | Sets the audio pitch to be higher or lower                                                          |
+| `framerate`     | `fps`       | Number | 1    | 30           | Lowers the video's framerate                                                                        |
 | `playreverse`   | `prev`      | Number | 1    | 2            | 1 = plays, then reverses. 2 = reverses, then plays the video                                        |
 | `reverb`        | `rvb`       | Number | 0    | 100          | Adds a reverb, or echo, effect                                                                      |
 | `reverbdelay`   | `rvd`       | Number | 0    | 100          | Echo response time, 100 means it takes the longest for an echo to bounce back                       |

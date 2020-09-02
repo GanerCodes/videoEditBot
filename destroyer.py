@@ -221,7 +221,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -544,6 +544,10 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
                 q = -q
             video = video.filter("eq", saturation = 1 + (d['deepfry'] / 100), contrast = 1 + q / 10)
 
+        def framerate():
+            nonlocal video, audio
+            video = video.filter("fps", constrain(d['framerate'], 1, 30))
+
         def hue():
             nonlocal video, audio
             if d['hue'] is None:
@@ -626,7 +630,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'wscale': wscale,
             'hscale': wscale,
             'sharpen': sharpen,
-            'watermark': watermark
+            'watermark': watermark,
+            'framerate': framerate
         }
 
         for i in orderedVideoFX:
@@ -919,7 +924,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "wobble"        :[V, int(r(1, 100))      , "wub"],
         "zoom"          :[V, int(r(1, 5))        , "zm"],
         "sharpen"       :[V, int(r(-100, 100))   , "shp"],
-        "watermark"     :[V, int(r(0, 100))      , "wtm"]
+        "watermark"     :[V, int(r(0, 100))      , "wtm"],
+        "framerate"     :[V, int(r(5, 20))       , "fps"]
     }
 
     kwargs = {}
