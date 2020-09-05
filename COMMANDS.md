@@ -9,6 +9,8 @@ To chain multiple commands, use a comma `,` to separate them. For example, bass 
 
 You can also use pipes `|` to separate groups of commands to be processed. For example, `ytp=100|hcycle=3`.
 
+To use the bot on Discord, prefix your command with "destroy". An empty command or "random" selects random parameters.
+
 | Command         | Shorthand   | Type   | Min  | Max          | Description                                                                                         |
 |-----------------|-------------|--------|------|--------------|-----------------------------------------------------------------------------------------------------|
 | `abr`           | `abr`       | Number | 0    | 100          | Audio Bit Reduction - Reduces audio quality                                                         |
