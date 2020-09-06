@@ -42,11 +42,12 @@ def silent_run(command, **kawrgs):
         fixPrint(f"Silent_run error:\n", command)
         printEx(ex)
 
-def loud_run(command, timeout = None):
-    if timeout == None:
-        check_call(command)
-    else:
-        check_call(command, timeout = timeout)
+def loud_run(command, **kawrgs):
+    try:
+        check_call(command, **kawrgs)
+    except Exception as ex:
+        fixPrint(f"loud_run error:\n", command)
+        printEx(ex)
 
 def all_in(l1, l2):
     return all(i in l2 for i in l1)
@@ -87,7 +88,7 @@ def getDur(filename):
 
 backslash = '\\'
 def getSize(filename):
-    cmd = f'''ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x "{filename.replace(backslash, '/').replace('//', '/')}"'''
+    cmd = f'''ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x '{filename.replace(backslash, '/').replace('//', '/')}' '''
     return [i.strip() for i in getoutput(cmd).split('x')]
 
 def checkIfDurationIsUnderTime(name, time):
@@ -95,8 +96,8 @@ def checkIfDurationIsUnderTime(name, time):
     try:
         h = float(getDur(name))
         if h > 1000000000 or h < 0:
-            nn = f"{getName(name)}TIMECHECK.mp4"
-            silent_run(f"ffmpeg -y -i {name} -c copy {nn}")
+            nn = f"{getDir(name)}/{getName(name)}TIMECHECK.mp4"
+            silent_run(f'''ffmpeg -y -i '{name}' -c copy '{nn}' ''')
             h = float(getDur(nn))
             remove(nn)
         if h < time:
@@ -252,7 +253,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         return None
 
     def makeAudio(pre, dr):
-        silent_run(f"sox -n -r 16000 -c 1 {pat}/{pre}{e0}.wav trim 0.0 {dr}", timeout = 15)
+        silent_run(["sox", "-n", "-r", "16000", "-c", "1", f"{pat}/{pre}{e0}.wav", "trim", "0.0", dr])
 
     def qui(t):
         t = t.global_args("-hide_banner")
@@ -281,7 +282,11 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     imageArray = [".png", ".jpg", ".jpeg"]
 
     if e[1] in imageArray:
-        system(f'''ffmpeg -hide_banner -loglevel fatal -framerate 1 -i {file} -c:v libx264 -r 2 -vf scale=w=ceil((iw)/2)*2:h=ceil((ih)/2)*2{',fps=3' if toVideo else ''} -pix_fmt yuv420p -max_muxing_queue_size 1024 {pat}/{e0}.mp4''')
+        #-hide_banner -loglevel {"fatal" if HIDE_ALL_FFMPEG else "error"}
+        #print(file,'->',f"{pat}/{e0}.mp4")
+        #loud_run(["ffmpeg", "-framerate", "1", f"{file}", "-c:v", "libx264", "-vf", f"scale=w=ceil((iw)/2)*2:h=ceil((ih)/2)*2{',fps=3' if toVideo else ''}", "-pix_fmt", "yuv420p", "-max_muxing_queue_size", "1024", f"{pat}/{e0}.mp4"])
+        system(f''' ffmpeg -hide_banner -loglevel error -framerate '1' -i '{file}' -c:v 'libx264' -r '2' -vf 'scale=w=ceil((iw)/2)*2:h=ceil((ih)/2)*2{',fps=3' if toVideo else ''}' -pix_fmt 'yuv420p' -max_muxing_queue_size '1024' '{pat}/{e0}.mp4' ''')
+
         remove(file)
         file = f"{pat}/{e0}.mp4"
         e = path.splitext(file)
@@ -299,7 +304,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     try:
         width, height = getSize(file)
         if int(width + height) > 800 or int(width) % 2 != 0 or int(height) % 2 != 0:
-            filtText = "-vf scale=2*ceil(trunc(iw*480/ih)/2):480 "
+            filtText = "-vf 'scale=2*ceil(trunc(iw*480/ih)/2):480' "
     except Exception as ex:
         fixPrint("Error near 302:", ex)
         pass
@@ -313,12 +318,12 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         d['end'] =   constrain(float(d['end'  ]), 0, 30000)
         ET = d['end']
         endText = f"-to {max(0.1, d['end'])} "
-    system(f"ffmpeg -hide_banner -loglevel error -i {e[0]}{e[1]} {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/RFM{e0}.mp4")
+    system(f'''ffmpeg -hide_banner -loglevel error -i '{e[0]}{e[1]}' {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/RFM{e0}.mp4' ''')
     if notNone(d['selection']):
         if ST:
-            system(f"ffmpeg -hide_banner -loglevel error -i {e[0]}{e[1]} -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/START_{e0}.mp4")
+            system(f'''ffmpeg -hide_banner -loglevel error -i "{e[0]}{e[1]}" -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/START_{e0}.mp4' ''')
         if ET:
-            system(f"ffmpeg -hide_banner -loglevel error -i {e[0]}{e[1]} -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}{pat}/END_{e0}.mp4")
+            system(f'''ffmpeg -hide_banner -loglevel error -i "{e[0]}{e[1]}" -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/END_{e0}.mp4' ''')
 
     remove(file)
     file = f"{pat}/{e0}.mp4"
@@ -328,7 +333,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     newName = e[0]+".mp4"
 
     DURATION = getDur(newName)
-    hhh = getoutput(f"ffprobe -v error -of flat=s_ -select_streams 1 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 {newName}")
+    hhh = getoutput(f'''ffprobe -v error -of flat=s_ -select_streams 1 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 '{newName}' ''')
     width, height = getSize(newName)
 
     vidHasAudio = True
@@ -337,7 +342,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if notNone(d['holdframe']):
         d['holdframe'] = constrain(d['holdframe'], 0.1, 12)
-        system(f"ffmpeg -hide_banner -loglevel fatal -i {newName} -frames:v 1 {pat}/FIRST_FRAME_{e0}.png")
+        system(f'''ffmpeg -hide_banner -loglevel fatal -i '{newName}' -frames:v 1 '{pat}/FIRST_FRAME_{e0}.png' ''')
         video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, t = d['holdframe'])
         DURATION = d['holdframe']
 
@@ -757,7 +762,9 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         s = s.global_args('-aspect', f"{width}:{height}")
 
     TMP = ffmpeg.overwrite_output(s)
-    #fixPrint(TMP.compile()) #Use this to debug FFMPEG stuff
+    
+    if not HIDE_FFMPEG_OUT:
+        fixPrint(TMP.compile()) #Use this to debug FFMPEG stuff
     timer()
     TMP.run()
     timer("Video FX")
@@ -783,12 +790,12 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         d['datamosh'] = constrain(d['datamosh'], 3, 100)
         if d['datamosh'] > 4:
             kint = int(100 - d['datamosh'] / 1.25)
-            run(f"ffmpeg -y -hide_banner -loglevel fatal -i {newName} -vcodec libx264 -x264-params keyint={kint} -max_muxing_queue_size 1024 {pat}/1_{e0}.avi")
+            system(f'''ffmpeg -y -hide_banner -loglevel fatal -i '{newName}' -vcodec libx264 -x264-params keyint={kint} -max_muxing_queue_size 1024 '{pat}/1_{e0}.avi' ''')
         else:
-            run(f"ffmpeg -y -hide_banner -loglevel fatal -i {newName} -vcodec libx264 -max_muxing_queue_size 1024 {pat}/1_{e0}.avi")
+            system(f'''ffmpeg -y -hide_banner -loglevel fatal -i '{newName}' -vcodec libx264 -max_muxing_queue_size 1024 '{pat}/1_{e0}.avi' ''')
         remove(newName)
-        silent_run(["C:/Ruby27-x64/bin/datamosh.bat", "-o", f"{pat}/2_{e0}.avi", f"{pat}/1_{e0}.avi"])
-        run(f"ffmpeg -hide_banner -loglevel fatal -i {pat}/2_{e0}.avi {pat}/3_{e0}.mp4")
+        silent_run(["datamosh", "-o", f"{pat}/2_{e0}.avi", f"{pat}/1_{e0}.avi"])
+        system(f'''ffmpeg -hide_banner -loglevel fatal -i '{pat}/2_{e0}.avi' '{pat}/3_{e0}.mp4' ''')
         remove(f"{pat}/2_{e0}.avi")
         rename(f"{pat}/3_{e0}.mp4", newName)
     def FXricecake():
@@ -798,7 +805,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     def FXclonemosh():
         nonlocal hasAudio, DURATION, d, e
         d['clonemosh'] = max(1, int(constrain(int(d['clonemosh']), 1, 100) / 10))
-        cloneMoshArgs = ["C:/Ruby27-x64/bin/ruby.exe", f"{parentPath}/clonemosh.rb", f"{pat}/{e0}", str(d['clonemosh'])]
+        cloneMoshArgs = ["ruby", f"{parentPath}/clonemosh.rb", f"{pat}/{e0}", str(d['clonemosh'])]
         if notNone(d['datamosh']):
             cloneMoshArgs.append("1")
         silent_run(cloneMoshArgs, timeout = 600)
@@ -847,7 +854,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if (isImage := (oldFormat in imageArray and not toVideo)):
         properFileName = e[0] + ".png"
-        system(f'''ffmpeg -y -hide_banner -loglevel fatal -i {newName} -ss 0 -vframes 1 {properFileName}''')
+        system(f'''ffmpeg -y -hide_banner -loglevel fatal -i '{newName}' -ss 0 -vframes 1 '{properFileName}' ''')
         remove(newName)
         newExt = "png"
     else:

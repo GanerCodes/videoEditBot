@@ -41,5 +41,5 @@ def downloadYT(name, url, skip, delay):
             track = track[startTime:]
     if delay is not None:
         track = AS.silent(duration = delay * 1000) + track
-    track.export(f"{addPrefix(name, 'BG')}.wav")
+    track.export(f"{addPrefix(name, 'BG')}.wav", format = "wav")
     return True

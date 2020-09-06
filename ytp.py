@@ -1,6 +1,6 @@
 from pathHelper import *
 from os import path, mkdir, system, remove, rename
-from subprocess import check_output
+from subprocess import getoutput
 from math import floor
 from random import uniform as r
 
@@ -20,10 +20,10 @@ def ytp(name, itters, hasAudio):
 	e = path.splitext(name)
 	e0 = getName(pat)
 
-	cmd  = "ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate " + name
-	cmd2 = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " + name
-	t = round(eval(check_output(cmd ).decode("utf-8")))
-	d = round(eval(check_output(cmd2).decode("utf-8")))
+	cmd  = f"ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate '{name}'"
+	cmd2 = f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 '{name}'"
+	t = round(eval(getoutput(cmd )))
+	d = round(eval(getoutput(cmd2)))
 
 	mkdir(f"{pat}/YTP{e0}")
 
@@ -47,16 +47,16 @@ def ytp(name, itters, hasAudio):
 	aud = " -af areverse" if hasAudio else ""
 
 	for i in points:
-		system(f'''ffmpeg -hide_banner -loglevel fatal -y -i {name} -ss {t}    -to {i[0]} -break_non_keyframes 1 {pat}/YTP{e0}/a{index}.mp4''')
-		system(f'''ffmpeg -hide_banner -loglevel fatal -y -i {name} -ss {i[0]} -to {i[0] + i[1]} -break_non_keyframes 1 {pat}/YTP{e0}/b{index}.mp4''')
-		system(f'''ffmpeg -hide_banner -loglevel fatal -y -i {pat}/YTP{e0}/b{index}.mp4 -vf reverse{aud} {pat}/YTP{e0}/r{index}.mp4''')
+		system(f'''ffmpeg -hide_banner -loglevel error -y -i '{name}' -ss {t}    -to {i[0]} -break_non_keyframes 1 '{pat}/YTP{e0}/a{index}.mp4' ''')
+		system(f'''ffmpeg -hide_banner -loglevel error -y -i '{name}' -ss {i[0]} -to {i[0] + i[1]} -break_non_keyframes 1 '{pat}/YTP{e0}/b{index}.mp4' ''')
+		system(f'''ffmpeg -hide_banner -loglevel error -y -i '{pat}/YTP{e0}/b{index}.mp4' -vf reverse{aud} '{pat}/YTP{e0}/r{index}.mp4' ''')
 		n.append(f"a{index}.mp4")
 		n.append(f"b{index}.mp4")
 		n.append(f"r{index}.mp4")
 		n.append(f"b{index}.mp4")
 		t = i[0] + i[1]
 		index += 1
-	system(f'''ffmpeg -hide_banner -loglevel fatal -y -i {name} -ss {t} -t {d} -break_non_keyframes 1 {pat}/YTP{e0}/e.mp4''')
+	system(f'''ffmpeg -hide_banner -loglevel error -y -i '{name}' -ss {t} -t {d} -break_non_keyframes 1 '{pat}/YTP{e0}/e.mp4' ''')
 	n.append('e.mp4')
 
 	f = open(f'{pat}/YTP{e0}/temp.txt','w')
@@ -64,7 +64,7 @@ def ytp(name, itters, hasAudio):
 		f.write(f"file '{i}'\n")
 	f.close()
 
-	system(f'''ffmpeg -hide_banner -loglevel fatal -f concat -safe 0 -i {pat}/YTP{e0}/temp.txt -c copy {pat}/_{e0}.mp4''')
+	system(f'''ffmpeg -hide_banner -loglevel error -f concat -safe 0 -i '{pat}/YTP{e0}/temp.txt' -c copy '{pat}/_{e0}.mp4' ''')
 	remove(name)
 	rename(f"{pat}/_{e0}.mp4", name)
 	#shutil.rmtree(e[0])

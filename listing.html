@@ -214,7 +214,7 @@
 						var imgURL = `${wloc}/thumb/${i.slice(0, -4)}.jpg`;
 						document.write(`<a href=${URL}?video><img class="thumbnail" alt="oh no" src=${imgURL}?thumb></img></a>`)
 					}else{
-						document.write(`<a href=${URL}><img class="thumbnail" src="https://ganer.xyz/@files/file.png"></img></a>`)
+						document.write(`<a href=${URL}><img class="thumbnail" src="${window.location.origin}/@files/file.png"></img></a>`)
 					}
 					//document.write(`<a href="${name}/${i}?video">${i}</a>`);
 				}

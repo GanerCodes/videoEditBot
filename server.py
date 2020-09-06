@@ -1,7 +1,8 @@
 import threading, shutil, psutil, random, time, ssl, re, os
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from getSens import getSens
 
-DIRNAME = "E:/Twitter"
+DIRNAME = f"{getSens('dir')[0]}/Twitter"
 HOST_NAME = ''
 PORT_NUMBER = 80
 MAXDIRSIZE = 100
@@ -12,8 +13,6 @@ parentDir = os.getcwd()
 if not os.path.isdir(DIRNAME):
 	os.mkdir(DIRNAME)
 os.chdir(DIRNAME)
-
-driveLetter = os.path.abspath(DIRNAME).split('/', 1)[0]
 
 class strArr:
     def __init__(self, startArr):
@@ -46,7 +45,7 @@ def sizeof_fmt(num, suffix='B'): #https://stackoverflow.com/a/1094933
     return "%.1f %s%s" % (num, 'Yi', suffix)
 
 def getSystemStats():
-    total, used, free = shutil.disk_usage(driveLetter)
+    total, used, free = shutil.disk_usage(DIRNAME)
     memory = psutil.virtual_memory()
     return (sizeof_fmt(used), sizeof_fmt(total), psutil.cpu_percent(), sizeof_fmt(memory.used), sizeof_fmt(memory.total))
 
@@ -95,9 +94,9 @@ class MyHandler(SimpleHTTPRequestHandler):
         ignoreOutput = False
 
         path, args, ext = getInfo(self)
-        pathname = re.sub(r"^([\/,\. ]{1,})", '', path).replace('../', '')
+        pathname = re.sub(r"^([\/,\. ]{1,})", '', path.lower()).replace('../', '')
         abspath = f"{os.getcwd()}/{pathname}".strip()
-        if not abspath.lower().startswith(DIRNAME.replace('/','\\').lower()):
+        if not abspath.lower().startswith(DIRNAME.lower()):
             abspath = f"{DIRNAME}/@error"
 
         CT = "text/html"
@@ -106,7 +105,7 @@ class MyHandler(SimpleHTTPRequestHandler):
 
         if len(pathname.strip().replace('/', '')) < 1:
             mode = "index"
-        elif pathname == "favicon.ico":
+        elif pathname == "icons/":
             mode = "icon"
             CT = "image/x-icon"
             code = 200
@@ -136,9 +135,8 @@ class MyHandler(SimpleHTTPRequestHandler):
                 mode = "dirIndex"
             else:
                 mode = "dirmode"
-
         if not ignoreOutput:
-            print("G - " + (pathname if len(pathname) > 0 else "INDEX"))
+            print(f"G ({mode}) - " + (pathname if len(pathname) > 0 else "INDEX"))
 
         if CT:
             self.send_response(code)
@@ -148,7 +146,7 @@ class MyHandler(SimpleHTTPRequestHandler):
         if mode == "stats":
             self.wfile.write(f'''{{"diskused":"{diskused}","disksize":"{disksize}","cpu":{cpu},"ramUsed":"{ramUsed}","totalRam":"{totalRam}"}}'''.encode('utf-8'))
         elif mode == "icon":
-            self.wfile.write(fileBytes(f"{parentDir}/favicon.ico"))
+            self.wfile.write(fileBytes(f"{parentDir}/icons/favicon.ico"))
         elif mode == "index":
             self.wfile.write(fileBytes(f"{parentDir}/index.html"))
         elif mode == "dirIndex":
@@ -157,9 +155,9 @@ class MyHandler(SimpleHTTPRequestHandler):
             if os.path.isfile(abspath):
                 self.wfile.write(fileBytes(abspath))
             else:
-                self.wfile.write(fileBytes(f"{parentDir}/question.jpg"))
+                self.wfile.write(fileBytes(f"{DIRNAME}/@files/question.gif"))
         elif mode == "vidpart":
-            path = self.translate_path(abspath)
+            path = abspath
             ctype = self.guess_type(path)
             f = open(path, 'rb')
             fs = os.fstat(f.fileno())
@@ -177,7 +175,7 @@ class MyHandler(SimpleHTTPRequestHandler):
                     start = int(start)
                 except ValueError as e:
                     self.send_error(400, 'invalid range')
-                if start >= size:
+                if int(start) >= int(size):
                     self.send_error(416, self.responses.get(416)[0])
                 if end == "":
                     end = size-1
@@ -327,5 +325,8 @@ if __name__ == '__main__':
     httpd = server_class((HOST_NAME, PORT_NUMBER), MyHandler)
     #httpd.socket = ssl.wrap_socket(httpd.socket, certfile = f"{parentDir}/server.pem", keyfile = f"{parentDir}/other.pem", server_side=True)
     print("Started.")
-    httpd.serve_forever()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
     httpd.server_close()

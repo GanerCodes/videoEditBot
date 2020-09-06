@@ -45,8 +45,8 @@ def ricecake(filein, amount, hasAudio):
 	e = path.splitext(filein)
 	e0 = getName(filein)
 
-	frameCount = int(getoutput(f"ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 {filein}"))
-	system(f"ffmpeg -y -hide_banner -loglevel fatal -i {filein} -r 30 -g {int(frameCount / 2)} -vf fps=30 -keyint_min 1000000 -qscale 0 {pat}/RC{e0}.avi")
+	frameCount = int(getoutput(f"ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 '{filein}'"))
+	system(f"ffmpeg -y -hide_banner -loglevel fatal -i '{filein}' -r 30 -g {int(frameCount / 2)} -vf 'fps=30' -keyint_min 1000000 -qscale 0 '{pat}/RC{e0}.avi'")
 	remove(filein)
 	filein = f"{pat}/RC{e0}.avi"
 
@@ -153,6 +153,6 @@ def ricecake(filein, amount, hasAudio):
 	remove(temp_idx1)
 	rmdir(temp_dir)
 
-	system(f"ffmpeg -y -hide_banner -loglevel fatal -i {pat}/O{e0}.avi {pat}/{e0}.mp4")
+	system(f"ffmpeg -y -hide_banner -loglevel fatal -i '{pat}/O{e0}.avi' '{pat}/{e0}.mp4'")
 	remove(f"{pat}/RC{e0}.avi")
 	remove(f"{pat}/O{e0}.avi")

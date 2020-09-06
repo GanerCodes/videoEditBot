@@ -9,8 +9,8 @@ from PIL import Image
 Thread = threading.Thread
 
 
-DIRECTORY = "E:/Twitter"
-BASEURL = "ganer.xyz"
+DIRECTORY = f"{getSens('dir')[0]}/Twitter"
+BASEURL = getSens('website')[0]
 
 
 if not os.path.isdir(DIRECTORY):
@@ -68,7 +68,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 
 	if tweet._json['extended_entities']['media'][0]['type'] == 'animated_gif' or m['expanded_url'].split('/')[-2] == "video": #Check if GIF or normal video
 		name = f"{uniquePrefix}_{ID}.mp4"
-		subprocess.call(f'''youtube-dl --quiet --no-playlist --geo-bypass --max-filesize 50M --merge-output-format mp4 -r 5M -o {uniquePrefix}_{ID}.mp4 "{m['expanded_url']}"''')
+		subprocess.check_output(["youtube-dl", "--quiet", "--no-playlist", "--geo-bypass", "--merge-output-format", "mp4", "-r", "5M", "-o", f"{uniquePrefix}_{ID}.mp4", f"{m['expanded_url']}"])
 	else: #Check if image
 		mediaType = "png"
 		TExt = m['media_url'].split('.')[-1]
@@ -99,7 +99,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 	now = datetime.datetime.now()
 	millis = str(int(round(time.time() * 1000)))
 	folder = DIRECTORY
-	foldName = reply._json['user']['screen_name']
+	foldName = reply._json['user']['screen_name'].lower()
 	newFolder = f"{folder}/{foldName}"
 	finalName = f"{uniquePrefix}_{ID}.{mediaType}"
 	fileName = f"_{foldName}_{millis}_{now.year}-{now.month}-{now.day}-{now.hour}.{now.minute}.{now.second}_{finalName[-6:]}"
@@ -134,7 +134,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 		shutil.move(finalName, newLocation)
 		if mediaType == "mp4":
 			thumbLoc = f"{thumbFold}/{os.path.splitext(fileName)[0]}.jpg"
-			os.system(f"ffmpeg -hide_banner -loglevel fatal -i {newLocation} -vframes 1 {thumbLoc}")
+			os.system(f"ffmpeg -hide_banner -loglevel fatal -i '{newLocation}' -vframes 1 '{thumbLoc}'")
 			img = Image.open(thumbLoc)
 			img.thumbnail((250, 250))
 			img.save(thumbLoc)

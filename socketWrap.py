@@ -41,11 +41,12 @@ def send(msg):
     if    canCom < 1: threadMsg(msg)
     else: canCom -= 1
 
-proc = subprocess.Popen(process.split(' '), stdout = subprocess.PIPE, universal_newlines = True, shell = True)
-while proc.poll() is None:
-    out = proc.stdout.readline().strip()
-    print(out)
-    if out != "":
-        send((ID + '～' + out).encode('utf-8'))
-print(proc.poll)
-s.close()
+while 1:
+    proc = subprocess.Popen(process, stdout = subprocess.PIPE, universal_newlines = True, shell = True)
+    while proc.poll() is None:
+        out = proc.stdout.readline().strip()
+        print(out)
+        if out != "":
+            send((ID + '～' + out).encode('utf-8'))
+
+    s.close()

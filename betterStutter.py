@@ -73,9 +73,9 @@ def stutter(name, para, hasAudio):
 	if path.isdir(fName):
 		rmtree(fName)
 	mkdir(fName)
-	system(f"ffmpeg {pre} -i {name} -qscale:v 4 -vf fps={NEWFPS} {fName}/frame%06d.jpg")
+	system(f"ffmpeg {pre} -i '{name}' -qscale:v 4 -vf 'fps={NEWFPS}' '{fName}/frame%06d.jpg'")
 	if hasAudio:
-		system(f"ffmpeg {pre} -i {name} {pat}/ST{e0}.wav")
+		system(f"ffmpeg {pre} -i '{name}' '{pat}/ST{e0}.wav'")
 	remove(name)
 	if hasAudio:
 		audio = AS.from_wav(f"{pat}/ST{e0}.wav")
@@ -141,7 +141,8 @@ def stutter(name, para, hasAudio):
 	if hasAudio:
 		audioFrames.export(f"{fName}.wav", format = "wav")
 		
-	system(f"ffmpeg {pre} -safe 0 -r {NEWFPS} -f concat -i {fName}.txt {f'-i {fName}.wav' if hasAudio else ''} -vf fps={NEWFPS} -shortest -map 0:v {'-map 1:a?' if hasAudio else ''} {name}")
+	stupididiotretarddumbquote = "'"
+	system(f"ffmpeg {pre} -safe 0 -r {NEWFPS} -f concat -i '{fName}.txt' {f'''-i '{fName}.wav{stupididiotretarddumbquote}''' if hasAudio else ''} -vf 'fps={NEWFPS}' -shortest -map 0:v {'-map 1:a?' if hasAudio else ''} '{name}'")
 	#rmtree(fName)
 
 def constrain(val, min_val, max_val):

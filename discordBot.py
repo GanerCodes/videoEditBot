@@ -1,5 +1,6 @@
 import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess
 from PIL import Image
+from url import downloadVideo
 from math import ceil
 from getSens import getSens
 from fixPrint import fixPrint
@@ -11,11 +12,11 @@ Thread = threading.Thread
 
 GUILD_MAX_USE_RATE = 8 #In seconds
 RESTRICTGUILDS = False
-DIRECTORY = "E:/Twitter/@"
-BASE_URL = "http://ganer.xyz/@"
+DIRECTORY = f"{getSens('dir')[0]}/Twitter/@"#/mnt/hgfs/VideoEditBot/Twitter/@"
+BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = "Working on bug fixes"#"twitter.com/VideoEditBot"
+TAGLINE = "Bot will be up and down for a bit, working on updates."#"twitter.com/VideoEditBot"
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -134,10 +135,11 @@ async def on_message(message):
             t = max(t) + 1
             rgs = txt.strip()[t:].split(' ', 1)
             uniqueID = ''.join([str(random.randint(0, 9)) for i in range(10)])
-
+            parentDir = os.getcwd()
             def downloadBackground(UNID):
                 j = rgs.copy()
-                os.system(f'python url.py "{rgs[0].strip()}" "{UNID}"')
+                fixPrint(f'''#\t{trim(f"Download - {rgs[0].strip()}", MSG_DISPLAY_LEN)}''')
+                downloadVideo(rgs[0].strip(), f"{parentDir}/{UNID}")
                 return [j, UNID, user.id]
             prc = await bot.loop.run_in_executor(None, downloadBackground, uniqueID)
             if prc is not None:
@@ -145,7 +147,7 @@ async def on_message(message):
                 rgs = prc[0]
                 if len(rgs) > 1 and rgs[1].startswith("destroy"):
                     rgs[1] = rgs[1][7:]
-                await message.channel.send(f"destroy {rgs[1]}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{uniqueID}.mp4"))
+                await message.channel.send(f"destroy {rgs[1]}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
                 os.remove(f"{uniqueID}.mp4")
     except Exception as e:
         fixPrint(e)
@@ -230,7 +232,7 @@ async def on_message(message):
                 imageCorrupt(*args2['args'])
                 return [0, os.path.splitext(args2['args'][1])[0] + ".png", args2["gid"]]
             else:
-                videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120, HIDE_ALL_FFMPEG = False)
+                videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120)
                 return [videoEditResult[0], newFile, videoEditResult[1:], args2["gid"]]
 
         prc = await bot.loop.run_in_executor(None, func) #Ok so what all this BS does it like run the function which calls the subprocess in async and make a copy of all the important variables into the function which also serves as a time barrel and copys them over to use once the subprocess finsihes i am at like sbsfgdhiu;lj; no sleep pelase
@@ -262,7 +264,7 @@ async def on_message(message):
                     shutil.move(prc[1], newLoc)
                     if os.path.splitext(prc[1])[1] == ".mp4":
                         thumbLoc = f"{thumbFold}/{os.path.splitext(prc[1])[0]}.jpg"
-                        os.system(f"ffmpeg -hide_banner -loglevel fatal -i {newLoc} -vframes 1 {thumbLoc}")
+                        os.system(f"""ffmpeg -hide_banner -loglevel error -i '{newLoc}' -vframes 1 '{thumbLoc}'""")
                         img = Image.open(thumbLoc)
                         img.thumbnail((250, 250))
                         img.save(thumbLoc)
