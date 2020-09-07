@@ -147,7 +147,8 @@ async def on_message(message):
                 rgs = prc[0]
                 if len(rgs) > 1 and rgs[1].startswith("destroy"):
                     rgs[1] = rgs[1][7:]
-                await message.channel.send(f"destroy {rgs[1]}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
+                repl = '@'+chr(8206) #replace '@' symbols with this
+                await message.channel.send(f"destroy {rgs[1].replace('@', repl)}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
                 os.remove(f"{uniqueID}.mp4")
     except Exception as e:
         fixPrint(e)
