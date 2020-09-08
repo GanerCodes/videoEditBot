@@ -33,6 +33,7 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `hscale`        | `hs`        | Number | 0    | 100          | Horizontal scale, sets the vertical resolution                                                      |
 | `hue`           | `hue`       | Number | 0    | 100          | Changes the hue of the video                                                                        |
 | `hypercam`      | `hypc`      | -      | -    | -            | Adds an "Unregistered Hypercam 2" watermark to the video                                            |
+| `invert`        | `inv`       | -      | -    | -            | Inverts video color                                                                                 |
 | `lag`           | `lag`       | Number | 1    | 100          | Continually shuffles frames back and forth.                                                         |
 | `music`         | `mus`       | Text   | -    | -            | Music is added using a YouTube video ID (the text after ?watch=). The song must be under 5 minutes. |
 | `musicdelay`    | `musd`      | Number | 0    | End of video | Number of seconds corresponding to when the added music starts                                      |

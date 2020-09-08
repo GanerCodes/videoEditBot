@@ -222,7 +222,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -253,7 +253,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         return None
 
     def makeAudio(pre, dr):
-        silent_run(["sox", "-n", "-r", "16000", "-c", "1", f"{pat}/{pre}{e0}.wav", "trim", "0.0", dr])
+        silent_run(["sox", "-n", "-r", "16000", "-c", "1", f"{pat}/{pre}{e0}.wav", "trim", "0.0", str(dr)])
 
     def qui(t):
         t = t.global_args("-hide_banner")
@@ -342,7 +342,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if notNone(d['holdframe']):
         d['holdframe'] = constrain(d['holdframe'], 0.1, 12)
-        system(f'''ffmpeg -hide_banner -loglevel fatal -i '{newName}' -frames:v 1 '{pat}/FIRST_FRAME_{e0}.png' ''')
+        system(f"""ffmpeg -hide_banner -loglevel error -i '{newName}' -frames:v 1 '{pat}/FIRST_FRAME_{e0}.png'""")
         video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, t = d['holdframe'])
         DURATION = d['holdframe']
 
@@ -375,7 +375,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if notNone(d['holdframe']):
         if not toVideo:
-            audio = ffmpeg.filter([audio, s.audio], "amix")
+            audio = ffmpeg.filter([audio, s.audio], "amix", duration = "first")
             hasAudio = True
     else:
         video = s.video
@@ -553,6 +553,10 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             nonlocal video, audio
             video = video.filter("fps", constrain(d['framerate'], 1, 30))
 
+        def invert():
+            nonlocal video, audio
+            video = video.filter("negate")
+
         def hue():
             nonlocal video, audio
             if d['hue'] is None:
@@ -636,7 +640,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'hscale': wscale,
             'sharpen': sharpen,
             'watermark': watermark,
-            'framerate': framerate
+            'framerate': framerate,
+            'invert': invert
         }
 
         for i in orderedVideoFX:
@@ -932,7 +937,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "zoom"          :[V, int(r(1, 5))        , "zm"],
         "sharpen"       :[V, int(r(-100, 100))   , "shp"],
         "watermark"     :[V, int(r(0, 100))      , "wtm"],
-        "framerate"     :[V, int(r(5, 20))       , "fps"]
+        "framerate"     :[V, int(r(5, 20))       , "fps"],
+        "invert"        :[V, 1                   , "inv"]
     }
 
     kwargs = {}
