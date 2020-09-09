@@ -26,7 +26,8 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `cap`           | `cap`       | Text   | 0    | 100          | Bold, centered, white caption at top                                                                |
 | `holdframe`     | `hf`        | Number | 0.1  | 12           | Makes the video only the first frame, for # of seconds                                              |
 | `speed`         | `sp`        | Number | 0.5  | 25           | Slows down or speeds up video                                                                       |
-| `deepfry`       | `df`        | Number | 0    | 100          | Deep fries the video, reduces quality (with added saturation and contrast)                          |
+| `deepfry`       | `df`        | Number | 0    | 100          | Deep fries the video, reduces quality (via added saturation)                                        |
+| `contrast`      | `ct`        | Number | 0    | 100          | Adds extra contrast to the video                                                                    |
 | `sharpen`       | `shp`       | Number | -100 | 100          | Applies a heavy sharpening filter. Negative numbers cause it to become more pixelly.                |
 | `hue`           | `hue`       | Number | 0    | 100          | Changes the hue of the video                                                                        |
 | `hcycle`        | `huec`      | Number | 0    | 100          | Rotates the hue of the video by a certain speed                                                     |
