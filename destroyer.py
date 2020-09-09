@@ -458,7 +458,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
         def rlag():
             nonlocal video, audio
-            d['rlag'] = constrain(int(d['rlag']), 1, 120)
+            d['rlag'] = constrain(int(d['rlag']), 2, 120)
             video = video.filter("random", d['rlag'])
 
         def shake():
