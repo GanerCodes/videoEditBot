@@ -222,7 +222,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -552,10 +552,15 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
         def deepfry():
             nonlocal video, audio
-            q = 2 * constrain(d['deepfry'] * 10, 0, 1000)
+            d['deepfry'] = constrain(d['deepfry'], -100, 100) / 10
+            video = video.filter("hue", s = d['deepfry'])
+
+        def contrast():
+            nonlocal video, audio
+            q = 2 * constrain(d['contrast'] * 10, 0, 1000)
             if q > 1000:
                 q = -q
-            video = video.filter("eq", saturation = 1 + (d['deepfry'] / 100), contrast = 1 + q / 10)
+            video = video.filter("eq", saturation = 1 + (d['contrast'] / 100), contrast = 1 + q / 10)
 
         def framerate():
             nonlocal video, audio
@@ -658,6 +663,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'hypercam': hypercam,
             'bandicam': bandicam,
             'deepfry': deepfry,
+            'contrast': contrast,
             'hue': hue,
             'hcycle': hue,
             'speed': speed,
@@ -915,6 +921,7 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "abr"           :[V, round(r(0, 100))    , "abr"],
         "earrape"       :[V, round(r(0, 100))    , "er"],
         "deepfry"       :[V, round(r(0, 100))    , "df"],
+        "contrast"      :[V, round(r(0, 100))    , "ct"],
         "speed"         :[V, r(-4, 4)            , "sp"],
         "timecode"      :[V, None                , "timc"],
         "bass"          :[V, round(r(0, 100))    , "bs"],
