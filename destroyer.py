@@ -222,7 +222,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -387,12 +387,9 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     
     if notNone(d['abr']):
         d['abr'] = 100 + 1000 * constrain(100 - d['abr'], 1, 100)
-
     if notNone(d['vbr']):
         d['vbr'] = 100 + 2000 * constrain(100 - d['vbr'], 2, 100)
 
-
-    
     if all_in(["topcaption", "bottomcaption"], orderedVideoFX):
         orderedVideoFX.remove("bottomcaption")
     if all_in(["toptext", "bottomtext"], orderedVideoFX):
@@ -401,6 +398,12 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         orderedVideoFX.remove("hscale")
     if all_in(["hue", "hcycle"], orderedVideoFX):
         orderedVideoFX.remove("hcycle")
+
+    for i in [o for o in ["waveamount", "wavestrength"] if o in orderedVideoFX]:
+        if "wave" in orderedVideoFX:
+            orderedVideoFX.remove(i)
+        else:
+            orderedVideoFX[orderedVideoFX.index(i)] = "wave"
 
     if any(orderedVideoFX):
         def playreverse():
@@ -452,6 +455,11 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
                 d['lag'] = int(translate(d['lag'], 1, 100, 2, 15)) + 2
                 frameOrder = '|'.join([str(v if i % 2 == 0 else d['lag'] - v) for i, v in enumerate(range(d['lag']))])
             video = video.filter("shuffleframes", frameOrder)
+
+        def rlag():
+            nonlocal video, audio
+            d['rlag'] = constrain(int(d['rlag']), 1, 120)
+            video = video.filter("random", d['rlag'])
 
         def shake():
             nonlocal video, audio
@@ -615,11 +623,29 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
                 video = video.filter('cas', x)
             video = video.filter("scale", w = f"iw*{d['sharpen'] + 1}", h = f"ih*{d['sharpen'] + 1}", **kw).filter("scale", w = "iw+mod(iw,2)", h = "ih+mod(ih,2)", flags = "neighbor")
 
+        def wave():
+            nonlocal video, audio
+            if notNone(d['wave']):
+                d['wave'] = constrain(d['wave'], -100, 100)
+            else:   
+                d['wave'] = 0
+            if notNone(d['waveamount']):
+                d['waveamount'] = constrain(d['waveamount'], 1, 100)
+            else:
+                d['waveamount'] = 10
+            if notNone(d['wavestrength']):
+                d['wavestrength'] = constrain(d['wavestrength'], 1, 100)
+            else:
+                d['wavestrength'] = 20
+            v = f"p(X,floor(Y+sin(T*{d['wave']/10}+X*{d['waveamount']/100})*{d['wavestrength']}))"
+            video = video.filter("geq", r = v, g = v, b = v)
+
         vidBind = {
             'playreverse': playreverse,
             'hmirror': hmirror,
             'vmirror': vmirror,
             'lag': lag,
+            'rlag': rlag,
             'shake': shake,
             'fisheye': fisheye,
             'zoom': zoom,
@@ -641,7 +667,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'sharpen': sharpen,
             'watermark': watermark,
             'framerate': framerate,
-            'invert': invert
+            'invert': invert,
+            'wave': wave
         }
 
         for i in orderedVideoFX:
@@ -933,12 +960,16 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "shake"         :[V, int(r(1, 100))      , "shk"],
         "crush"         :[V, int(r(1, 100))      , "cr"],
         "lag"           :[V, int(r(1, 100))      , "lag"],
+        "rlag"          :[V, int(r(1, 100))      , "rlag"],
         "wobble"        :[V, int(r(1, 100))      , "wub"],
         "zoom"          :[V, int(r(1, 5))        , "zm"],
         "sharpen"       :[V, int(r(-100, 100))   , "shp"],
         "watermark"     :[V, int(r(0, 100))      , "wtm"],
         "framerate"     :[V, int(r(5, 20))       , "fps"],
-        "invert"        :[V, 1                   , "inv"]
+        "invert"        :[V, 1                   , "inv"],
+        "wave"          :[V, r(-100, 100)        , "wav"],
+        "waveamount"    :[V, r(0, 100)           , "wava"],
+        "wavestrength"  :[V, r(0, 100)           , "wavs"]
     }
 
     kwargs = {}
@@ -952,7 +983,7 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
     randomSel = ''
     if len(args) == 0 or len(args[0]) == 0 and len(kwargs) == 0:
         if allowRandom:
-            args = [[{'name': v, 'value': (float(par[v][1]) if par[v][0] == V else str(par[v][1])), 'order': i} for i, v in enumerate(par) if (notNone(par[v][1]) and r(0, 7) < 1)]]
+            args = [[{'name': v, 'value': (float(par[v][1]) if par[v][0] == V else str(par[v][1])), 'order': i} for i, v in enumerate(par) if (notNone(par[v][1]) and r(0, 7) < 0.4)]]
             randomSel = " (Randomly selected)"
         else:
             return -1

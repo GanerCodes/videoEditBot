@@ -14,6 +14,7 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | Command         | Shorthand   | Type   | Min  | Max          | Description                                                                                         |
 |-----------------|-------------|--------|------|--------------|-----------------------------------------------------------------------------------------------------|
 | `abr`           | `abr`       | Number | 0    | 100          | Audio Bit Reduction - Reduces audio quality                                                         |
+| `vbr`           | `vbr`       | Number | 0    | 100          | Video bit reduction, worsens quality of video                                                       |
 | `bandicam`      | `bndc`      | -      | -    | -            | Adds a Bandicam watermark                                                                           |
 | `bass`          | `bs`        | Number | 0    | 100          | Bass boost                                                                                          |
 | `bottomcaption` | `bc`        | Text   | 0    | 100          | Bottom caption, in motivational text style                                                          |
@@ -34,7 +35,8 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `hue`           | `hue`       | Number | 0    | 100          | Changes the hue of the video                                                                        |
 | `hypercam`      | `hypc`      | -      | -    | -            | Adds an "Unregistered Hypercam 2" watermark to the video                                            |
 | `invert`        | `inv`       | -      | -    | -            | Inverts video color                                                                                 |
-| `lag`           | `lag`       | Number | 1    | 100          | Continually shuffles frames back and forth.                                                         |
+| `lag`           | `lag`       | Number | 1    | 100          | Reverses frames in chunks.                                                                          |
+| `rlag`          | `rlag`      | Number | 1    | 100          | Shuffles frames in chunks.                                                                          |
 | `music`         | `mus`       | Text   | -    | -            | Music is added using a YouTube video ID (the text after ?watch=). The song must be under 5 minutes. |
 | `musicdelay`    | `musd`      | Number | 0    | End of video | Number of seconds corresponding to when the added music starts                                      |
 | `musicskip`     | `muss`      | Number | 0    | End of music | Starts the song at a given time of the song (in seconds)                                            |
@@ -58,7 +60,6 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `timecode`      | `timc`      | Number | 1    | 4            | Messes with the video's timecode metadata. Only applies to Discord bot.                             |
 | `topcaption`    | `tc`        | Text   | -    | -            | Top caption, in motivational text style                                                             |
 | `toptext`       | `tt`        | Text   | -    | -            | Top text in impact font                                                                             |
-| `vbr`           | `vbr`       | Number | 0    | 100          | Video bit reduction, worsens quality of video                                                       |
 | `vmirror`       | `vm`        | Number | 1    | 2            | Mirrors vertically, `1` = mirrors top half of video, `2` = mirrors bottom half of video             |
 | `volume`        | `vol`       | Number | 0    | 2000         | Multiplies volume. Higher number results in louder video.                                           |
 | `watermark`     | `wtm`       | Number | 0    | 100          | Adds random watermarks to a video. Higher numbers add more.                                         |

@@ -6,6 +6,7 @@ TOKENS.txt
 /*.mov
 /*.wav
 /*.f251
+/*.gif
 __pycache__
 active
 *.pem
