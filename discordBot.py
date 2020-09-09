@@ -331,7 +331,7 @@ async def on_message(message):
     #     await post(f"Your message contains {hCount} h's")
 
     if ltxt == "hat":
-        await message.channel.send(file = discord.File(f"{DIRECTORY}/../@Files/hat.png"))
+        await message.channel.send(file = discord.File(f"{DIRECTORY}/../@files/hat.png"))
         return
 
 bot.run(TOKEN)

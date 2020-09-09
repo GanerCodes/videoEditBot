@@ -31,6 +31,8 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `sharpen`       | `shp`       | Number | -100 | 100          | Applies a heavy sharpening filter. Negative numbers cause it to become more pixelly.                |
 | `hue`           | `hue`       | Number | 0    | 100          | Changes the hue of the video                                                                        |
 | `hcycle`        | `huec`      | Number | 0    | 100          | Rotates the hue of the video by a certain speed                                                     |
+| `vreverse`      | `vrev`      | -      | -    | -            | Reverses video                                                                                      |
+| `areverse`      | `arev`      | -      | -    | -            | Reverses audio                                                                                      |
 | `reverse`       | `rev`       | -      | -    | -            | Reverses the video and audio                                                                        |
 | `playreverse`   | `prev`      | Number | 1    | 2            | 1 = plays, then reverses. 2 = reverses, then plays the video                                        |
 | `hmirror`       | `hm`        | Number | 1    | 2            | Mirrors horizontal, 1 is the left half, 2 is the right half                                         |
@@ -43,6 +45,7 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `lag`           | `lag`       | Number | 1    | 100          | Reverses frames in chunks.                                                                          |
 | `rlag`          | `rlag`      | Number | 1    | 100          | Shuffles frames in chunks.                                                                          |
 | `framerate`     | `fps`       | Number | 1    | 30           | Lowers the video's framerate                                                                        |
+| `acid`          | `acid`      | Number | 1    | 100          | Makes it look like your on acid                                                                     |
 | `fisheye`       | `fe`        | Number | 1    | 2            | Adds a fisheye effect on the video                                                                  |
 | `selection`     | `se`        | -      | -    | -            | Makes `start` and `end` correspond to when the effects are applied                                  |
 | `start`         | `s`         | Number | 0    | End of Video | Time when video begins, in seconds. (Or start of effect with `selection`)                           |
@@ -67,4 +70,6 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `shuffle`       | `sh`        | -      | -    | -            | Shuffles the whole video                                                                            |
 | `stutter`       | `st`        | Number | 0    | 100          | Adds random stutters to the video                                                                   |
 | `ricecake`      | `rc`        | Number | 1    | 100          | Clones delta frames (corrupting video) and clones audio                                             |
+| `glitch`        | `glch`      | Number | 1    | 100          | Makes the video corrupted                                                                           |
+| `repeatuntil`   | `repu`      | Number | 1    | 45           | Repeats video until this time is reached                                                            |
 | `timecode`      | `timc`      | Number | 1    | 4            | Messes with the video's timecode metadata. Only applies to Discord bot.                             |

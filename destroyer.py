@@ -222,7 +222,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -294,7 +294,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             d['holdframe'] = 10
         else:
             removeAudioFilters()
-            removeFilters = "ytp,datamosh,clonemosh,ricecake,shake,stutter,shuffle,lag".split(',')
+            removeFilters = "reverse,vreverse,areverse,ytp,datamosh,clonemosh,ricecake,shake,stutter,shuffle,lag,rlag,repeatuntil".split(',')
             for i in removeFilters:
                 d[i] = None
     else:
@@ -318,12 +318,12 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         d['end'] =   constrain(float(d['end'  ]), 0, 30000)
         ET = d['end']
         endText = f"-to {max(0.1, d['end'])} "
-    system(f'''ffmpeg -hide_banner -loglevel error -i '{e[0]}{e[1]}' {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/RFM{e0}.mp4' ''')
+    system(f'''ffmpeg -hide_banner -loglevel fatal -i '{e[0]}{e[1]}' {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/RFM{e0}.mp4' ''')
     if notNone(d['selection']):
         if ST:
-            system(f'''ffmpeg -hide_banner -loglevel error -i "{e[0]}{e[1]}" -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/START_{e0}.mp4' ''')
+            system(f'''ffmpeg -hide_banner -loglevel fatal -i "{e[0]}{e[1]}" -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/START_{e0}.mp4' ''')
         if ET:
-            system(f'''ffmpeg -hide_banner -loglevel error -i "{e[0]}{e[1]}" -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/END_{e0}.mp4' ''')
+            system(f'''ffmpeg -hide_banner -loglevel fatal -i "{e[0]}{e[1]}" -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/END_{e0}.mp4' ''')
 
     remove(file)
     file = f"{pat}/{e0}.mp4"
@@ -458,7 +458,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
         def rlag():
             nonlocal video, audio
-            d['rlag'] = constrain(int(d['rlag']), 2, 120)
+            d['rlag'] = constrain(int(d['rlag'] + 1), 2, 120)
             video = video.filter("random", d['rlag'])
 
         def shake():
@@ -591,11 +591,18 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             if hasAudio:
                 audio = audio.filter("atempo", q)
 
-        def reverse():
+        def vreverse():
             nonlocal video, audio
             video = video.filter("reverse")
+
+        def areverse():
+            nonlocal video, audio
             if hasAudio:
                 audio = audio.filter("areverse")
+
+        def reverse():
+            vreverse()
+            areverse()
 
         def wscale():
             nonlocal video, audio
@@ -627,6 +634,11 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             for x in [1 for i in range(a)]+[d['sharpen'] - a]:
                 video = video.filter('cas', x)
             video = video.filter("scale", w = f"iw*{d['sharpen'] + 1}", h = f"ih*{d['sharpen'] + 1}", **kw).filter("scale", w = "iw+mod(iw,2)", h = "ih+mod(ih,2)", flags = "neighbor")
+
+        def acid():
+            nonlocal video, audio
+            d['acid'] = translate(d['acid'], 1, 100, 1, 10000, f = lambda x: x**2)
+            video = video.filter("amplify", 3, d['acid']).filter("scale", w = "iw/4+mod(iw/4,2)", h = "ih/4+mod(ih/4,2)", flags = "neighbor")
 
         def wave():
             nonlocal video, audio
@@ -667,6 +679,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'hue': hue,
             'hcycle': hue,
             'speed': speed,
+            'vreverse': vreverse,
+            'areverse': areverse,
             'reverse': reverse,
             'wscale': wscale,
             'hscale': wscale,
@@ -674,7 +688,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'watermark': watermark,
             'framerate': framerate,
             'invert': invert,
-            'wave': wave
+            'wave': wave,
+            'acid': acid
         }
 
         for i in orderedVideoFX:
@@ -794,7 +809,12 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         video = split[0].filter("scale", "2*ceil(trunc(iw*480/ih)/2)", "480")
     video = video.filter("scale", w = "iw + mod(iw, 2)", h = "ih + mod(ih, 2)")
 
-    s = applyBitrate('_', VBR = d['vbr'], ABR = d['abr'], **{'preset': 'veryfast'})
+    outputArgs = {'preset': 'veryfast'}
+    if notNone(d['glitch']):
+        d['glitch'] = 100000 - 1000 * constrain(d['glitch'], 1, 99)
+        outputArgs['bsf:v'] = f"noise={d['glitch']}"
+
+    s = applyBitrate('_', VBR = d['vbr'], ABR = d['abr'], **outputArgs)
 
     if notNone(d['fisheye']):
         s = s.global_args('-aspect', f"{width}:{height}")
@@ -885,10 +905,15 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             remove(newName)
             rename(f"{pat}/NEW_{e0}.mp4", newName)
 
+    if not toGif and notNone(d['repeatuntil']):
+        d['repeatuntil'] = constrain(d['repeatuntil'], 1, 45)
+        system(f'''ffmpeg -y -hide_banner -loglevel error -stream_loop -1 -i '{newName}' -t {d['repeatuntil']} -c copy {(changedName := f'{addPrefix(newName, "REPEAT")}.mp4')}''')
+        remove(newName)
+        rename(changedName, newName)
+
     if notNone(d['timecode']) and not disallowTimecodeBreak:
         d['timecode'] = int(constrain(d['timecode'], 1, 4))
         timecodeBreak(newName, d['timecode'])
-
 
     if (isImage := (oldFormat in imageArray and not toVideo)):
         properFileName = e[0] + ".png"
@@ -940,6 +965,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "normalcaption" :[S, str(r(0, 100))      , "nc"],
         "cap"           :[S, str(r(0, 100))      , "cap"],
         "reverse"       :[V, 1                   , "rev"],
+        "vreverse"      :[V, 1                   , "vrev"],
+        "areverse"      :[V, 1                   , "arev"],
         "playreverse"   :[V, int(r(1, 3))        , "prev"],
         "datamosh"      :[V, int(r(0, 100))      , "dm"],
         "stutter"       :[S, int(r(0, 25))       , "st"],
@@ -976,7 +1003,10 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "invert"        :[V, 1                   , "inv"],
         "wave"          :[V, r(-100, 100)        , "wav"],
         "waveamount"    :[V, r(0, 100)           , "wava"],
-        "wavestrength"  :[V, r(0, 100)           , "wavs"]
+        "wavestrength"  :[V, r(0, 100)           , "wavs"],
+        "repeatuntil"   :[V, None                , "repu"],
+        "acid"          :[V, r(1, 100)           , "acid"],
+        "glitch"        :[V, r(1, 100)           , "glch"]
     }
 
     kwargs = {}
