@@ -47,6 +47,9 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `framerate`     | `fps`       | Number | 1    | 30           | Lowers the video's framerate                                                                        |
 | `acid`          | `acid`      | Number | 1    | 100          | Makes it look like your on acid                                                                     |
 | `fisheye`       | `fe`        | Number | 1    | 2            | Adds a fisheye effect on the video                                                                  |
+| `wave`          | `wav`       | Number | 1    | 100          | Adds a wavy, shimmering effect to the video. Higher numbers mean faster waves.                      |
+| `waveamount`    | `wava`      | Number | 1    | 100          | Adds a wavy, shimmering effect to the video. Higher numbers mean more waves.                        |
+| `wavestrength`  | `wavs`      | Number | 1    | 100          | Adds a wavy, shimmering effect to the video. Higher numbers mean larger waves.                      |
 | `selection`     | `se`        | -      | -    | -            | Makes `start` and `end` correspond to when the effects are applied                                  |
 | `start`         | `s`         | Number | 0    | End of Video | Time when video begins, in seconds. (Or start of effect with `selection`)                           |
 | `end`           | `e`         | Number | 0    | End of video | Time when video ends, in seconds. (Or end of effect with `selection`)                               |
