@@ -34,6 +34,12 @@ def getInfo(s):
         args = path[1].split("&")
     return (path[0], args, os.path.splitext(path[0])[1][1:])
 
+def n(x):
+    try:
+        return os.path.getmtime(f"@/{x}")
+    except Exception as ex:
+        return 12345678901234567
+
 def exists(s):
     return os.path.isfile(s) or os.path.isdir(s)
 
@@ -175,6 +181,8 @@ class MyHandler(SimpleHTTPRequestHandler):
                     start = int(start)
                 except ValueError as e:
                     self.send_error(400, 'invalid range')
+                    start = 0
+
                 if int(start) >= int(size):
                     self.send_error(416, self.responses.get(416)[0])
                 if end == "":
@@ -205,7 +213,8 @@ class MyHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(fileBytes(path+'_'))
             except Exception as e:
                 pass
-            os.remove(path+"_")
+            if os.path.isfile(f := path+"_"):
+                os.remove(f)
 
         elif mode == "vidpage":
             self.wfile.write(f'''<html>
@@ -279,11 +288,6 @@ class MyHandler(SimpleHTTPRequestHandler):
 </html>'''.encode('utf-8'))
         elif mode == "dirmode":
             dirFiles = [i for i in os.listdir(abspath) if i != "thumb" and os.path.splitext(i)[1][1:] not in ["db"]]
-            def n(x):
-                try:
-                    return os.path.getmtime(f"@/{x}")
-                except Exception as ex:
-                    return 12345678901234567
             dirFiles.sort(key = n)
             dirFiles = dirFiles[::-1]
             seg = 0
