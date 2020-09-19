@@ -222,7 +222,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -398,6 +398,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         orderedVideoFX.remove("hscale")
     if all_in(["hue", "hcycle"], orderedVideoFX):
         orderedVideoFX.remove("hcycle")
+    if all_in(["hcrop", "vcrop"], orderedVideoFX):
+        orderedVideoFX.remove("vcrop")
 
     for i in [o for o in ["waveamount", "wavestrength"] if o in orderedVideoFX]:
         if "wave" in orderedVideoFX:
@@ -474,6 +476,13 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
                 video = video.filter("scale", w = width, h = height)
             video = video.filter("setsar", r = 1)
         
+        def hcrop():
+            nonlocal video, audio
+            hcrop = f"{1 - (constrain(d['hcrop'], 1, 95) if notNone(d['hcrop']) else 0) / 100}*iw"
+            vcrop = f"{1 - (constrain(d['vcrop'], 1, 95) if notNone(d['vcrop']) else 0) / 100}*ih"
+            video = video.filter("crop", hcrop, vcrop)
+            
+
         def zoom():
             nonlocal video, audio
             flag = False
@@ -689,7 +698,9 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'framerate': framerate,
             'invert': invert,
             'wave': wave,
-            'acid': acid
+            'acid': acid,
+            'hcrop': hcrop,
+            'vcrop': hcrop
         }
 
         for i in orderedVideoFX:
@@ -997,6 +1008,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "rlag"          :[V, int(r(1, 100))      , "rlag"],
         "wobble"        :[V, int(r(1, 100))      , "wub"],
         "zoom"          :[V, int(r(1, 5))        , "zm"],
+        "hcrop"         :[V, int(r(10, 90))      , "hcp"],
+        "vcrop"         :[V, int(r(10, 90))      , "vcp"],
         "sharpen"       :[V, int(r(-100, 100))   , "shp"],
         "watermark"     :[V, int(r(0, 100))      , "wtm"],
         "framerate"     :[V, int(r(5, 20))       , "fps"],

@@ -40,6 +40,8 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `invert`        | `inv`       | -      | -    | -            | Inverts video color                                                                                 |
 | `wscale`        | `ws`        | Number | -500 | 500          | Sets the horizontal resolution.                                                                     |
 | `hscale`        | `hs`        | Number | 0    | 100          | Horizontal scale, sets the vertical resolution                                                      |
+| `hcrop`         | `hcp`       | Number | 1    | 95           | How much to horizontally crop the video, in terms of precent.                                       |
+| `vcrop`         | `vcp`       | Number | 1    | 95           | How much to vertically crop the video, in terms of precent.                                         |
 | `zoom`          | `zm`        | Number | -15  | 15           | Zooms towards the middle of the video. Negative values do the same, but more pixellated.            |
 | `shake`         | `shk`       | Number | 1    | 100          | Shakes the video around                                                                             |
 | `lag`           | `lag`       | Number | 1    | 100          | Reverses frames in chunks.                                                                          |

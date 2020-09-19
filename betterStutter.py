@@ -9,7 +9,6 @@ from os import listdir, system, path, rename, remove, mkdir
 
 
 NEWFPS = 30
-DUR = 30
 pre = "-y -hide_banner -loglevel fatal"
 
 class frame():
@@ -79,7 +78,7 @@ def stutter(name, para, hasAudio):
 	remove(name)
 	if hasAudio:
 		audio = AS.from_wav(f"{pat}/ST{e0}.wav")
-	files = listdir(fName)
+	files = sorted(listdir(fName))
 	audioFrames = []
 	intv = 1000 / NEWFPS
 	
@@ -138,6 +137,7 @@ def stutter(name, para, hasAudio):
 	with open(f"{fName}.txt", 'w+') as txt:
 		for i in frames:
 			txt.write(f"file '{getName(fName)}/{files[i.loc]}'\n")
+
 	if hasAudio:
 		audioFrames.export(f"{fName}.wav", format = "wav")
 		
@@ -160,7 +160,6 @@ def intCeil(x):
 	return int(ceil(x))
 
 def stutterInputProcess(name, st, hasAudio = True, entireShuffle = False, dur = 30):
-	global DUR
 	st = re_sub(r"[^0-9.]", "", st)
 	DUR = float(dur)
 	preset = {
@@ -183,7 +182,7 @@ def stutterInputProcess(name, st, hasAudio = True, entireShuffle = False, dur = 
 			'maxdur': -1
 		}
 	elif st.isnumeric():
-		st = intCeil(constrain(int(int(2 * st) / 10), 1, 10) * (DUR / 30))
+		st = intCeil(constrain(float(st) / 10, 1, 10) * (DUR / 30))
 		preset['reverse'], preset['shuffle'], preset['duplicate'] = st, st, st
 	elif '.' in st:
 		B = [preset[i] for i in preset]
