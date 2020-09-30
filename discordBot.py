@@ -1,4 +1,4 @@
-import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess
+import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess, datetime
 from PIL import Image
 from url import downloadVideo
 from math import ceil
@@ -16,7 +16,7 @@ DIRECTORY = f"{getSens('dir')[0]}/Twitter/@"#/mnt/hgfs/VideoEditBot/Twitter/@"
 BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = "Bot will be up and down for a bit, working on updates."#"twitter.com/VideoEditBot"
+TAGLINE = 'Type "Destroy" followed by your command to edit a video!'#"twitter.com/VideoEditBot"
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -79,7 +79,7 @@ def setLength(txt, l):
 
 timedGuilds = []
 
-bot = discord.Client()
+bot = discord.AutoShardedClient(status=discord.Game(name=TAGLINE))
 
 # @bot.event
 # async def on_ready():
@@ -89,7 +89,7 @@ fixPrint("Discord bot started.")
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game(name=TAGLINE))
+    print(f"Bot Guild count: {len(bot.guilds)}")
 
 @bot.event
 async def on_message(message):
@@ -158,7 +158,19 @@ async def on_message(message):
         await post("Command documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
         return
     
+    #print(ltxt)
+    if ltxt.startswith("debug this"):
+        print(ltxt)
+    
+    prefixLength = 0
     if ltxt.strip().startswith("destroy"):
+        prefixLength = 7
+    elif ltxt.strip().startswith(pref:=f"<@!{bot.user.id}>"):
+        prefixLength = len(pref)
+    elif ltxt.strip().startswith("videoeditbot"):
+        prefixlength = 12
+
+    if prefixLength:
         if str(guildID) not in guildList:
             currentTime = time.time()
             for i, v in enumerate(timedGuilds):
@@ -202,7 +214,9 @@ async def on_message(message):
             await post("File format unavailable.\nFile format list: webm, mp4, mov, gif, jpg/jpeg, png")
             return
 
-        uniqueID = ''.join([str(random.randint(0, 9)) for i in range(10)])
+        now = datetime.datetime.now()
+        millis = str(int(round(time.time() * 1000)))
+        uniqueID = f"{''.join([str(random.randint(0, 9)) for i in range(10)])}_{millis}"
         newFile = uniqueID + '.' + newExt
         try:
             await attach.save(uniqueID + '.' + oldExt)
@@ -216,13 +230,13 @@ async def on_message(message):
         if len(ltxt) > 7 and ltxt[7] == 'i':
             args = {
                 'f': imageCorrupt, 
-                'args': [uniqueID + '.' + oldExt, txt.strip()[8:]],
+                'args': [uniqueID + '.' + oldExt, txt.strip()[prefixLength:]],
                 'gid': guildID
             }
         else:
             args = {
                 'f': videoEdit, 
-                'args': [uniqueID + '.' + oldExt, txt.strip()[8:]],
+                'args': [uniqueID + '.' + oldExt, txt.strip()[prefixLength:]],
                 'gid': guildID
             }
 

@@ -28,8 +28,8 @@ def downloadYT(name, url, skip, delay):
 
     ydl = youtube_dl.YoutubeDL(ydl_opts)
     properties = ydl.extract_info(j, download = False)
-    if properties["duration"] > 600:
-        raise Exception("Video too long to download!")
+    if properties["duration"] > (maxTime := 600):
+        raise Exception(f"Video too long to download! {properties['duration']}s > {maxTime}s")
     ydl.download([j])
 
     track = AS.from_file(exportName)

@@ -477,9 +477,11 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             video = video.filter("setsar", r = 1)
         
         def hcrop():
-            nonlocal video, audio
-            hcrop = f"{1 - (constrain(d['hcrop'], 1, 95) if notNone(d['hcrop']) else 0) / 100}*iw"
-            vcrop = f"{1 - (constrain(d['vcrop'], 1, 95) if notNone(d['vcrop']) else 0) / 100}*ih"
+            nonlocal video, audio, width, height
+            hcrop = f"{(tx := 1 - (constrain(d['hcrop'], 1, 95) if notNone(d['hcrop']) else 0) / 100)}*iw"
+            vcrop = f"{(ty := 1 - (constrain(d['vcrop'], 1, 95) if notNone(d['vcrop']) else 0) / 100)}*ih"
+            width  = str(int(int(width )*tx))
+            height = str(int(int(height)*ty))
             video = video.filter("crop", hcrop, vcrop)
             
 
@@ -910,7 +912,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         if SW is not None:
             newOutVideo = newOut.filter("scale", w = SW, h = SH).filter("fps", fps = 30)
             newOut = ffmpeg.concat(*(before + [newOutVideo, newOut.audio] + after), 
-                n = bool(ST) + bool(ET), v = 1, a = aAmount)
+                n = bool(ST) + bool(ET), v = 1, a = aAmount, unsafe = 1)
             newOut = qui(newOut.output(f"{pat}/NEW_{e0}.mp4"))
             newOut.run()
             remove(newName)
@@ -1070,9 +1072,9 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         removeGarbage(f"{newPath}", keepExtraFiles)
         success = True
     except Exception as ex:
-        fixPrint(f'Destroyer error!')
-        fixPrint("Args were:", strArgs(args))
+        fixPrint("Error! Args were:", strArgs(args))
         printEx(ex)
+        success = False
 
     if SHOWTIMER:
         print(f"Destroyer time: {time() - start_time}")
@@ -1098,5 +1100,5 @@ if __name__ == "__main__":
         fixPrint("Error! Cannot find input file.")
         sys.exit(1)
 
-    v = videoEdit(properFileName, args, disallowTimecodeBreak = len(sys.argv) != 3)
+    v = videoEdit(properFileName, args)
     sys.exit(v[0])

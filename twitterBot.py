@@ -25,7 +25,13 @@ def makeApi(access_key, access_secret):
 	authorization = tweepy.OAuthHandler(consumer_key, consumer_secret)
 	authorization.set_access_token(access_key, access_secret) 
 	return tweepy.API(authorization)
-api = makeApi(access_key, access_secret) 
+
+api = makeApi(access_key, access_secret)
+
+if all(altKeys := getSens("alt_access_key", "alt_access_secret")):
+	altAPI = makeApi(*altKeys)
+else:
+	altAPI = api
 
 currentTweet, lastTweet = None, None
 
@@ -102,7 +108,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 	foldName = reply._json['user']['screen_name'].lower()
 	newFolder = f"{folder}/{foldName}"
 	finalName = f"{uniquePrefix}_{ID}.{mediaType}"
-	fileName = f"_{foldName}_{millis}_{now.year}-{now.month}-{now.day}-{now.hour}.{now.minute}.{now.second}_{finalName[-6:]}"
+	fileName = f"_{foldName}_{millis}_{finalName[-6:]}"
 	newLocation = f"{newFolder}/{fileName}"
 	newURL = f"{BASEURL}/{foldName}/{fileName}?video"
 
@@ -116,7 +122,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 		isRandom = re.sub(r"@[^ ]{1,}", '', txt).strip() in ['random', 'r', 'rnadom', '']
 		ret = videoEdit(name, txt, disallowTimecodeBreak = True, fixPrint = altPrint, durationUnder = 120, allowRandom = isRandom)
 		if ret == -1:
-			bpnt("Not a tweet with arguments, ignoring.")
+			#bpnt("Not a tweet with arguments, ignoring.")
 			if os.path.isfile(finalName): #Delete downloaded file
 				os.remove(finalName)
 			return
@@ -275,14 +281,14 @@ while True:
 			callBot(e	, ID		, mostRecentTweet, uniquePrefix, mostRecentTweet)
 		elif mostRecentTweet._json['in_reply_to_status_id_str'] is not None:
 			try:
-				topUser = api.get_status(mostRecentTweet._json['in_reply_to_status_id_str'], tweet_mode = 'extended')
+				topUser = altAPI.get_status(mostRecentTweet._json['in_reply_to_status_id_str'], tweet_mode = 'extended')
 			except tweepy.TweepError as TE:
 				if (codeMsg := testCode(TE)):
 					print(codeMsg)
 					pass
 				else:
 					try:
-						api.update_status(f"I can't see tweet you replied to. Perhaps they blocked me or have a private account?", in_reply_to_status_id = mostRecentTweet.id, auto_populate_reply_metadata=True)
+						api.update_status(f"I can't see tweet you replied to. Perhaps they have the bot blocked or a private account?", in_reply_to_status_id = mostRecentTweet.id, auto_populate_reply_metadata=True)
 					except Exception as aex:
 						if (codeMsg := testCode(aex)):
 							print(codeMsg)
@@ -292,7 +298,6 @@ while True:
 				continue
 
 			topUserE = topUser._json['entities']
-			#print(mostRecentTweet)
 			topTweetTagCount = (topUser._json['full_text'].lower()+'@'+topUser._json['user']['screen_name']).count("@videoeditbot")
 			tagCount = mostRecentTweet._json['full_text'].lower().count("@videoeditbot")
 			isReplyToMyTweet = (not topUser._json['in_reply_to_status_id_str']) and topUser._json['user']['screen_name'] == "@videoeditbot"
@@ -301,16 +306,12 @@ while True:
 					continue
 			if tagCount > 0 or isReplyToMyTweet:
 				callBot(topUserE, topUser._json['id'], topUser, uniquePrefix, mostRecentTweet)
-			# if "@videoeditbot" in (topUser._json['full_text']+'@'+topUser._json['user']['screen_name']).lower():
-			# 	if mostRecentTweet._json['full_text'].lower().count("@videoeditbot") < 2:
-			# 		#print("Tweet is reply without extra mention, ignoring.")
-			# 		continue
 			
 		else:
 			try:
-				topUser = api.get_status(mostRecentTweet._json['quoted_status_id_str'], tweet_mode = 'extended')
+				topUser = altAPI.get_status(mostRecentTweet._json['quoted_status_id_str'], tweet_mode = 'extended')
 				topUserE = topUser._json['entities']
-				callBot(topUserE, topUser._json['id'], topUser	, uniquePrefix, mostRecentTweet, isRetweet = True)
+				callBot(topUserE, topUser._json['id'], topUser, uniquePrefix, mostRecentTweet, isRetweet = True)
 			except Exception as e:
 				continue
 	que.runQuedThreads()
