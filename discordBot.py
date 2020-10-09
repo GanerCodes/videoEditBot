@@ -133,13 +133,17 @@ async def on_message(message):
         t = [len(i) for i in ["download", "downloader"] if ltxt.strip().startswith(i)]
         if len(t) > 0:
             t = max(t) + 1
-            rgs = txt.strip()[t:].split(' ', 1)
+            rgs = ' '.join(txt.strip()[t:].strip().split())
+            if rgs.count(' ') > 1:
+                rgs = rgs.split('|')
+            else:
+                rgs = rgs.split(' ')
             uniqueID = ''.join([str(random.randint(0, 9)) for i in range(10)])
             parentDir = os.getcwd()
             def downloadBackground(UNID):
                 j = rgs.copy()
-                fixPrint(f'''#\t{trim(f"Download - {rgs[0].strip()}", MSG_DISPLAY_LEN)}''')
-                downloadVideo(rgs[0].strip(), f"{parentDir}/{UNID}")
+                fixPrint(f'''#\t{trim(f"Download - {rgs[0]}", MSG_DISPLAY_LEN)}''')
+                downloadVideo(rgs[0], f"{parentDir}/{UNID}")
                 return [j, UNID, user.id]
             prc = await bot.loop.run_in_executor(None, downloadBackground, uniqueID)
             if prc is not None:
@@ -148,11 +152,11 @@ async def on_message(message):
                 if len(rgs) > 1 and rgs[1].startswith("destroy"):
                     rgs[1] = rgs[1][7:]
                 repl = '@'+chr(8206) #replace '@' symbols with this
-                await message.channel.send(f"destroy {rgs[1].replace('@', repl)}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
+                await message.channel.send(f"destroy {rgs[1].replace('@', repl).strip()}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
                 os.remove(f"{uniqueID}.mp4")
     except Exception as e:
         fixPrint(e)
-        await post("There was an issue downloading your video. If you think this is a mistake please tag Ganer.")
+        await post("There was an issue downloading your video, perhaps it is to long to download? If you think this is a mistake, please message a bug report to https://twitter.com/VideoEditBot")
 
     if ltxt.strip() == "destroy help":
         await post("Command documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")

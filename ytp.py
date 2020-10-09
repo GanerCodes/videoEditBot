@@ -1,5 +1,6 @@
 from pathHelper import *
-from os import path, mkdir, system, remove, rename
+from os import path, makedirs, system, remove, rename
+from shutil import rmtree
 from subprocess import getoutput
 from math import floor
 from random import uniform as r
@@ -25,7 +26,10 @@ def ytp(name, itters, hasAudio):
 	t = round(eval(getoutput(cmd )))
 	d = round(eval(getoutput(cmd2)))
 
-	mkdir(f"{pat}/YTP{e0}")
+	dirPath = f"{pat}/YTP{e0}"
+	if path.isdir(dirPath):
+		rmtree(dirPath)
+	makedirs(dirPath)
 
 	points = []
 	MT = 0.1
