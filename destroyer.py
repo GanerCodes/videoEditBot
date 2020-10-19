@@ -86,6 +86,11 @@ def getImageRes(path):
 def getDur(filename):
     return getoutput(f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {filename}")
 
+def checkAudio(filename):
+    hhh = getoutput(f'''ffprobe -v error -of flat=s_ -select_streams 1 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 '{filename}' ''')
+    return not (hhh == "null" or hhh.strip() == "" or "no streams" in hhh)
+
+
 backslash = '\\'
 def getSize(filename):
     cmd = f'''ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x '{filename.replace(backslash, '/').replace('//', '/')}' '''
@@ -222,7 +227,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -253,7 +258,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         return None
 
     def makeAudio(pre, dr):
-        silent_run(["sox", "-n", "-r", "16000", "-c", "1", f"{pat}/{pre}{e0}.wav", "trim", "0.0", str(dr)])
+        silent_run(["sox", "-n", "-r", "16000", "-c", "1", fNam:=f"{pat}/{pre}{e0}.wav", "trim", "0.0", str(dr)])
+        return fNam
 
     def qui(t):
         t = t.global_args("-hide_banner")
@@ -306,7 +312,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         if int(width + height) > 800 or int(width) % 2 != 0 or int(height) % 2 != 0:
             filtText = "-vf 'scale=2*ceil(trunc(iw*480/ih)/2):480' "
     except Exception as ex:
-        fixPrint("Error near 302:", ex)
+        fixPrint("Error getting size:", ex)
         pass
 
     startText, endText = "", ""
@@ -333,7 +339,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     newName = e[0]+".mp4"
 
     DURATION = getDur(newName)
-    hhh = getoutput(f'''ffprobe -v error -of flat=s_ -select_streams 1 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 '{newName}' ''')
     width, height = getSize(newName)
 
     vidHasAudio = True
@@ -346,8 +351,10 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, t = d['holdframe'])
         DURATION = d['holdframe']
 
-    if toGif or toVideo or hhh == "null" or hhh.strip() == "" or "no streams" in hhh:
+    if toGif or not checkAudio(newName):
         vidHasAudio = False
+    if d['selection']:
+        OGvidAudio = vidHasAudio
 
     if toGif:
         vidHasAudio = False
@@ -631,6 +638,14 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
                 height = str(scaleY)
             video = video.filter("scale", w = scaleX, h = scaleY, flags = "neighbor")
 
+        def hflip():
+            nonlocal video, audio
+            video = video.filter("hflip")
+
+        def vflip():
+            nonlocal video, audio
+            video = video.filter("vflip")
+
         def sharpen():
             nonlocal video, audio
 
@@ -702,7 +717,9 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'wave': wave,
             'acid': acid,
             'hcrop': hcrop,
-            'vcrop': hcrop
+            'vcrop': hcrop,
+            'hflip': hflip,
+            'vflip': vflip
         }
 
         for i in orderedVideoFX:
@@ -896,23 +913,34 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if notNone(d['selection']):
         newOut = ffmpeg.input(newName)
-        aAmount = 1 if hasAudio else 0
         before, after = [], []
         SW, SH = None, None
         if ST and d['delfirst'] is None:
-            start = ffmpeg.input(f"{pat}/START_{e0}.mp4")
-            before = [start.video.filter("fps", fps = 30), start.audio]
+            start = ffmpeg.input(BEFORE := f"{pat}/START_{e0}.mp4")
+            before = [start.video.filter("fps", fps = 30)]
+            if OGvidAudio:
+                before += [start.audio]
+            elif hasAudio:
+                before += [ffmpeg.input(makeAudio("BEFORE", getDur(BEFORE)))]
+
             if SW is None:
                 SW, SH = getSize(f"{pat}/START_{e0}.mp4")
         if ET and d['dellast' ] is None:
-            end = ffmpeg.input(f"{pat}/END_{e0}.mp4")
-            after = [end.video.filter("fps", fps = 30), end.audio]
+            end = ffmpeg.input(AFTER := f"{pat}/END_{e0}.mp4")
+            after = [end.video.filter("fps", fps = 30)]
+            if OGvidAudio:
+                after += [end.audio]
+            elif hasAudio:
+                after += [ffmpeg.input(makeAudio("AFTER", getDur(AFTER)))]
+
             if SW is None:
                 SW, SH = getSize(f"{pat}/END_{e0}.mp4")
         if SW is not None:
             newOutVideo = newOut.filter("scale", w = SW, h = SH).filter("fps", fps = 30)
-            newOut = ffmpeg.concat(*(before + [newOutVideo, newOut.audio] + after), 
-                n = bool(ST) + bool(ET), v = 1, a = aAmount, unsafe = 1)
+            midSegment = [newOutVideo]
+            if hasAudio:
+                midSegment += [newOut.audio]
+            newOut = ffmpeg.concat(*(before + midSegment + after), n = bool(ST) + bool(ET), v = 1, a = 1 if (hasAudio or OGvidAudio) else 0, unsafe = 1)
             newOut = qui(newOut.output(f"{pat}/NEW_{e0}.mp4"))
             newOut.run()
             remove(newName)
@@ -1012,6 +1040,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "zoom"          :[V, int(r(1, 5))        , "zm"],
         "hcrop"         :[V, int(r(10, 90))      , "hcp"],
         "vcrop"         :[V, int(r(10, 90))      , "vcp"],
+        "hflip"         :[V, 1                   , "hflp"],
+        "vflip"         :[V, 1                   , "vflp"],
         "sharpen"       :[V, int(r(-100, 100))   , "shp"],
         "watermark"     :[V, int(r(0, 100))      , "wtm"],
         "framerate"     :[V, int(r(5, 20))       , "fps"],

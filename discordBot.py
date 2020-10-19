@@ -12,11 +12,11 @@ Thread = threading.Thread
 
 GUILD_MAX_USE_RATE = 8 #In seconds
 RESTRICTGUILDS = False
-DIRECTORY = f"{getSens('dir')[0]}/Twitter/@"#/mnt/hgfs/VideoEditBot/Twitter/@"
+DIRECTORY = f"{getSens('dir')[0]}/Twitter/@"  #/mnt/hgfs/VideoEditBot/Twitter/@"
 BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = 'Type "Destroy" followed by your command to edit a video!'#"twitter.com/VideoEditBot"
+TAGLINE = 'http://discord.gg/aFrEBEN'  #"twitter.com/VideoEditBot"
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -79,11 +79,7 @@ def setLength(txt, l):
 
 timedGuilds = []
 
-bot = discord.AutoShardedClient(status=discord.Game(name=TAGLINE))
-
-# @bot.event
-# async def on_ready():
-#     fixPrint(f'Connected to discord.')
+bot = discord.AutoShardedClient(status = discord.Game(name = TAGLINE))
 
 fixPrint("Discord bot started.")
 
@@ -106,6 +102,9 @@ async def on_message(message):
             fixPrint(trim(f"|\t{setLength('DMs', 10)}/{setLength(message.author.name, 10)}: {message.content}", MSG_DISPLAY_LEN))
             return
     elif message.guild == None:
+        return
+
+    if not message.channel.permissions_for(message.guild.me).send_messages:
         return
 
     guildID = message.guild.id
@@ -156,7 +155,7 @@ async def on_message(message):
                 os.remove(f"{uniqueID}.mp4")
     except Exception as e:
         fixPrint(e)
-        await post("There was an issue downloading your video, perhaps it is to long to download? If you think this is a mistake, please message a bug report to https://twitter.com/VideoEditBot")
+        await post("There was an issue downloading your video, perhaps it isn't a valid URL or search query? If you think this is a mistake, please message a bug report to https://twitter.com/VideoEditBot")
 
     if ltxt.strip() == "destroy help":
         await post("Command documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")

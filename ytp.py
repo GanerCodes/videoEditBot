@@ -17,6 +17,8 @@ def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
 def ytp(name, itters, hasAudio):
+	itters = max(1, itters)
+
 	pat = getDir(name)
 	e = path.splitext(name)
 	e0 = getName(pat)
