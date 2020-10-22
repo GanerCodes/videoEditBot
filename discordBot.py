@@ -1,4 +1,5 @@
 import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess, datetime
+import sqlite3 as sql
 from PIL import Image
 from url import downloadVideo
 from math import ceil
@@ -16,7 +17,7 @@ DIRECTORY = f"{getSens('dir')[0]}/Twitter/@"  #/mnt/hgfs/VideoEditBot/Twitter/@"
 BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = 'http://discord.gg/aFrEBEN'  #"twitter.com/VideoEditBot"
+TAGLINE = 'https://discord.gg/aFrEBEN'  #"twitter.com/VideoEditBot"
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -38,6 +39,8 @@ def formatKey(l):
 
 TOKEN, guilds = getSens("discord", "guilds")
 guildList = [i.strip() for i in guilds.split(',')]
+patreonServerID = int(getSens("patreon_server")[0])
+patreonTierRoles = [int(i.strip()) for i in getSens("tier_roles")[0].split(',')]
 
 def UFID(ID, l):
     random.seed(ID)
@@ -78,24 +81,62 @@ def setLength(txt, l):
     return txt[:l - 1] + ("…" if len(txt) > l else "_" * (l - len(txt)))
 
 timedGuilds = []
+timedUsers = []
 
 bot = discord.AutoShardedClient(status = discord.Game(name = TAGLINE))
 
-fixPrint("Discord bot started.")
+
+def getTier(id, SET = "SUBSCRIBERS"):
+    cur.execute(f"SELECT (teir) FROM {SET} where id = {id}")
+    return j[0][0] if (j := cur.fetchall()) else False
+
+def removeID(id, c = True, SET = "SUBSCRIBERS"):
+    cur.execute(f"DELETE FROM {SET} where id = {id}")
+    if c:
+        con.commit()
+
+def addSubscriber(id, teir, SET = "SUBSCRIBERS"):
+    removeID(id, c = False, SET = SET)
+    cur.execute(f"REPLACE INTO {SET} (id, teir) VALUES ({id}, {teir})")
+    con.commit()
+
+def clearSubscribers(SET = "SUBSCRIBERS"):
+    cur.execute(f"DELETE FROM {SET}")
+
+con = sql.connect('PATREON.db')
+cur = con.cursor()
+
+try: #Create if it doesn't exist
+    cur.execute("CREATE TABLE SUBSCRIBERS (id, teir)")
+    # cur.execute("CREATE TABLE GUILDS (id, teir)")
+except sql.OperationalError as e:
+    pass
+
+async def updateSubscriptionList():
+    global botIsReady
+
+    srv = bot.get_guild(patreonServerID)
+    while True:
+        clearSubscribers()
+        for i, v in enumerate(patreonTierRoles):
+            for m in srv.get_role(v).members:
+                addSubscriber(m.id, i + 1)
+        botIsReady = True
+        await asyncio.sleep(60 * 5)
+
+botIsReady = False
 
 @bot.event
 async def on_ready():
-    print(f"Bot Guild count: {len(bot.guilds)}")
+    if not botIsReady:
+        fixPrint("Discord bot started.")
+        print(f"Bot Guild count: {len(bot.guilds)}")
+        await updateSubscriptionList()
 
 @bot.event
 async def on_message(message):
-    # This is some code I used to remove some scam bots from my server, replace "psyonix" with whatever prefix the bots use (this code is not optimized at all and really should only be used in case of an emergency)
-    # async for member in message.guild.fetch_members(limit=5000):
-    #     fixPrint(member.name)
-    #     if member.name.lower().startswith("psyonix"):
-    #         fixPrint(member.name)
-    #         await member.ban(reason="lol", delete_message_days=7)
-    #         fixPrint("Ban?")
+    if not botIsReady:
+        return
 
     if DISPLAY_MESSAGES:
         if message.guild == None:
@@ -103,7 +144,6 @@ async def on_message(message):
             return
     elif message.guild == None:
         return
-
     if not message.channel.permissions_for(message.guild.me).send_messages:
         return
 
@@ -174,18 +214,54 @@ async def on_message(message):
         prefixlength = 12
 
     if prefixLength:
-        if str(guildID) not in guildList:
-            currentTime = time.time()
-            for i, v in enumerate(timedGuilds):
-                if v["id"] == guildID:
-                    if v["time"] < currentTime:
-                        v["time"] = currentTime + GUILD_MAX_USE_RATE
-                    else:
-                        await post(f"Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
-                        return
-                    break
+        currentTime = time.time()
+
+        if user.id != bot.user.id:
+
+            userTier  = getTier(user.id)
+            guildTier = getTier(message.guild.owner.id)
+            userDelay  = (7  if userTier  == 1 else (3 if userTier  == 2 else 1)) if userTier  else False
+            guildDelay = (10 if guildTier == 1 else (5 if guildTier == 2 else 1)) if guildTier else 15
+
+            if userDelay and userDelay <= guildDelay:
+                for i, v in enumerate(timedUsers):
+                    if v["id"] ==  user.id:
+                        if v["time"] < currentTime:
+                            v["time"] = currentTime + userDelay
+                        else:
+                            await post(f"<@!{user}> Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
+                            return
+                        break
+                else:
+                    timedUsers.append({"id": user.id, "time": currentTime + userDelay})
             else:
-                timedGuilds.append({"id": guildID, "time": currentTime + GUILD_MAX_USE_RATE})
+                for i, v in enumerate(timedGuilds):
+                    if v["id"] == guildID:
+                        if v["time"] < currentTime:
+                            v["time"] = currentTime + guildDelay
+                        else:
+                            await post(f"Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
+                            return
+                        break
+                else:
+                    timedGuilds.append({"id": guildID, "time": currentTime + guildDelay})
+
+            # 
+
+            # if userTier := getTier(user.id):
+            #     userDelay = 7 if userTier == 1 else (3 if userTier == 2 else 1)
+            #     for i, v in enumerate(timedUsers):
+            #         if v["id"] ==  user.id:
+            #             if v["time"] < currentTime:
+            #                 v["time"] = currentTime + userDelay
+            #             else:
+            #                 await post(f"<@!{user}> Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
+            #                 return
+            #             break
+            #     else:
+            #         timedUsers.append({"id": user.id, "time": currentTime + userDelay})
+            # else:
+                
 
         attach = None
         if len(message.attachments) > 0:

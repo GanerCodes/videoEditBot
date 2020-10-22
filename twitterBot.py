@@ -120,7 +120,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 		def altPrint(*args, **kwargs):
 			botPrint(*args, prefix = prefix, **kwargs)
 		isRandom = re.sub(r"@[^ ]{1,}", '', txt).strip() in ['random', 'r', 'rnadom', '']
-		ret = videoEdit(name, txt, disallowTimecodeBreak = True, fixPrint = altPrint, durationUnder = 120, allowRandom = isRandom)
+		ret = videoEdit(name, txt, disallowTimecodeBreak = True, fixPrint = altPrint, durationUnder = 142, allowRandom = isRandom)
 		if ret == -1:
 			#bpnt("Not a tweet with arguments, ignoring.")
 			if os.path.isfile(finalName): #Delete downloaded file

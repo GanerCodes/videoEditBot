@@ -1,6 +1,7 @@
 TOKENS.txt
 /*.mp4
 /*.jpg
+/*.jpeg
 /*.png
 /*.webm
 /*.mp3
@@ -8,6 +9,7 @@ TOKENS.txt
 /*.wav
 /*.f251
 /*.gif
+/*.db
 __pycache__
 active
 *.pem
