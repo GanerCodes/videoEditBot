@@ -2,7 +2,7 @@ import threading, shutil, psutil, random, time, ssl, re, os
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from getSens import getSens
 
-DIRNAME = f"{getSens('dir')[0]}/Twitter"
+DIRNAME = f"{getSens('dir')[0]}"
 HOST_NAME = ''
 PORT_NUMBER = 80
 MAXDIRSIZE = 100
@@ -155,7 +155,7 @@ class MyHandler(SimpleHTTPRequestHandler):
             if os.path.isfile(abspath):
                 self.wfile.write(fileBytes(abspath))
             else:
-                self.wfile.write(fileBytes(f"{DIRNAME}/@files/question.gif"))
+                self.wfile.write(fileBytes(f"{DIRNAME}/@files/question.png"))
         elif mode == "vidpart":
             path = abspath
             ctype = self.guess_type(path)

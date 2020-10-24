@@ -9,13 +9,14 @@ from PIL import Image
 Thread = threading.Thread
 
 
-DIRECTORY = f"{getSens('dir')[0]}/Twitter"
+DIRECTORY = f"{getSens('dir')[0]}"
 BASEURL = getSens('website')[0]
 
 
 if not os.path.isdir(DIRECTORY):
     os.makedirs(DIRECTORY)
-    print(f'Created directory "{DIRECTORY}"')
+    os.makedirs(f"{DIRECTORY}/@")
+    print(f'Created directory "{DIRECTORY}" and "{DIRECTORY}/@"')
 
 que = threadQue(l = True)
 
@@ -140,7 +141,8 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 		shutil.move(finalName, newLocation)
 		if mediaType == "mp4":
 			thumbLoc = f"{thumbFold}/{os.path.splitext(fileName)[0]}.jpg"
-			os.system(f"ffmpeg -hide_banner -loglevel fatal -i '{newLocation}' -vframes 1 '{thumbLoc}'")
+			subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", newLocation, "-vframes", "1", thumbLoc])
+			# os.system(f"ffmpeg -hide_banner -loglevel fatal -i '{newLocation}' -vframes 1 '{thumbLoc}'")
 			img = Image.open(thumbLoc)
 			img.thumbnail((250, 250))
 			img.save(thumbLoc)

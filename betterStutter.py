@@ -1,3 +1,5 @@
+from subprocess import run
+from listHelper    import *
 from pathHelper import *
 from itertools import chain
 from shutil import rmtree
@@ -72,9 +74,11 @@ def stutter(name, para, hasAudio):
 	if path.isdir(fName):
 		rmtree(fName)
 	mkdir(fName)
-	system(f"ffmpeg {pre} -i '{name}' -qscale:v 4 -vf 'fps={NEWFPS}' '{fName}/frame%06d.jpg'")
+	# system(f"ffmpeg {pre} -i '{name}' -qscale:v 4 -vf 'fps={NEWFPS}' '{fName}/frame%06d.jpg'")
+	run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-i", name, "-qscale:v", "4", "-vf", f"fps={NEWFPS}", f"{fName}/frame%06d.jpg"])
 	if hasAudio:
-		system(f"ffmpeg {pre} -i '{name}' '{pat}/ST{e0}.wav'")
+		# system(f"ffmpeg {pre} -i '{name}' '{pat}/ST{e0}.wav'")
+		run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-i", name, f"{pat}/ST{e0}.wav"])
 	remove(name)
 	if hasAudio:
 		audio = AS.from_wav(f"{pat}/ST{e0}.wav")
@@ -141,9 +145,19 @@ def stutter(name, para, hasAudio):
 	if hasAudio:
 		audioFrames.export(f"{fName}.wav", format = "wav")
 		
-	stupididiotretarddumbquote = "'"
-	system(f"ffmpeg {pre} -safe 0 -r {NEWFPS} -f concat -i '{fName}.txt' {f'''-i '{fName}.wav{stupididiotretarddumbquote}''' if hasAudio else ''} -vf 'fps={NEWFPS}' -shortest -map 0:v {'-map 1:a?' if hasAudio else ''} '{name}'")
-	#rmtree(fName)
+	# stupididiotretarddumbquote = "'"
+	# system(f"ffmpeg {pre} -safe 0 -r {NEWFPS} -f concat -i '{fName}.txt' {f'''-i '{fName}.wav{stupididiotretarddumbquote}''' if hasAudio else ''} -vf 'fps={NEWFPS}' -shortest -map 0:v {'-map 1:a?' if hasAudio else ''} '{name}'")
+	
+	args = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-safe", "0", "-r", str(NEWFPS), "-f", "concat", "-i", f"{fName}.txt", 1, "-vf", f"fps={NEWFPS}", "-shortest", "-map", "0:v", 2, name]
+	if hasAudio:
+		args = listReplace(args, 1, ["-i", f"{fName}.wav"])
+		args = listReplace(args, 2, ["-map", "1:a?"])
+		args = unwrap(args)
+	else:
+		args = listReplace(args, 1, None)
+		args = listReplace(args, 2, None)
+		args = removeNone(args)
+	run(args)
 
 def constrain(val, min_val, max_val):
     if val == None:

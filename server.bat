@@ -1,1 +1,1 @@
-python3 socketWrap.py "python3 -u server.py" 0
+python socketWrap.py "python -u server.py" 0
