@@ -9,9 +9,11 @@ from PIL import Image
 Thread = threading.Thread
 
 
+REDUCED_LOGGING = True
+
+
 DIRECTORY = f"{getSens('dir')[0]}"
 BASEURL = getSens('website')[0]
-
 
 if not os.path.isdir(DIRECTORY):
     os.makedirs(DIRECTORY)
@@ -39,16 +41,22 @@ currentTweet, lastTweet = None, None
 def testCode(c):
 	if type(c) == int:
 		if c == 185:
-			return "Error: Rate limit."
+			if REDUCED_LOGGING:
+				return ''
+			else:
+				return "Error: Rate limit."
 		elif c == 385:
-			return "Error: Can't see tweet to reply to."
+			if REDUCED_LOGGING:
+				return ''
+			else:
+				return "Error: Can't see tweet to reply to."
 		else:
 			return False
 	else:
 		if c.api_code is not None:
 			return testCode(c.api_code)
 		else:
-			return f"NON-TWITTER API ERROR {str(c)}"
+			return f"UNKNOWN ERROR: {str(c)}"
 
 def UFID(ID, l):
 	random.seed(ID)
@@ -75,7 +83,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 
 	if tweet._json['extended_entities']['media'][0]['type'] == 'animated_gif' or m['expanded_url'].split('/')[-2] == "video": #Check if GIF or normal video
 		name = f"{uniquePrefix}_{ID}.mp4"
-		subprocess.check_output(["youtube-dl", "--quiet", "--no-playlist", "--geo-bypass", "--merge-output-format", "mp4", "-r", "5M", "-o", f"{uniquePrefix}_{ID}.mp4", f"{m['expanded_url']}"])
+		subprocess.check_output(["youtube-dlc", "--quiet", "--no-playlist", "--geo-bypass", "--merge-output-format", "mp4", "-r", "5M", "-o", f"{uniquePrefix}_{ID}.mp4", f"{m['expanded_url']}"])
 	else: #Check if image
 		mediaType = "png"
 		TExt = m['media_url'].split('.')[-1]
@@ -99,8 +107,7 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 	
 	prefix = f"P-{UFID(ID, 3)}"
 	def bpnt(m):
-		print(f"{prefix}:\t\t{m}")
-
+		if len(str(m)) > 0: print(f"{prefix}:\t\t{m}")
 
 	tt = tmpName if (tmpName := '@'+reply._json['user']['screen_name']) != '@videoeditbot' else ""
 	now = datetime.datetime.now()
@@ -185,12 +192,14 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 		fsize = os.path.getsize(newLocation) / (1024 ** 2)
 		if fsize > 15.3:
 			replyApi.update_status(f"Your video was too large to upload directly, here is a backup of the result: {newURL}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-			bpnt("Tweet posted (2)")
+			if not REDUCED_LOGGING:
+				bpnt("Tweet posted (2)")
 		else:
 			mediaID = replyApi.media_upload(newLocation)
 			time.sleep(5)
 			replyApi.update_status('', media_ids=[mediaID.media_id_string], in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-			bpnt("Tweet posted (2)")
+			if not REDUCED_LOGGING:
+				bpnt("Tweet posted (2)")
 			return
 
 	#If that failed
@@ -203,7 +212,8 @@ def getContent(m, ID, tweet, uniquePrefix, reply, isRetweet):
 			errorMessage = f"Something went wrong, Twitter error code {code}"
 
 			replyApi.update_status(f"{errorMessage}, here is a backup of the result: {newURL}", in_reply_to_status_id = str(reply.id), auto_populate_reply_metadata=True)
-			bpnt(f"Tweet posted (1), Twitter error code: {code}")
+			if not REDUCED_LOGGING:
+				bpnt(f"Tweet posted (1), Twitter error code: {code}")
 			return
 		except Exception as b:
 			bpnt(f"WARN (-1) Code: {b.api_code}")
@@ -317,5 +327,5 @@ while True:
 			except Exception as e:
 				continue
 	que.runQuedThreads()
-	if count > 0:
+	if count > 0 and (not REDUCED_LOGGING or len(que) > 10):
 		print(f"Executed destroyer for {count} tweet(s); {str(que).lower()}.")

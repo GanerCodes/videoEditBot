@@ -18,3 +18,5 @@ cookies.txt
 *.part
 *.ytdl
 .DS_Store
+PATREON.db-journal
+PATREON.db

@@ -4,6 +4,7 @@ import sys, ffmpeg
 
 from subprocess import DEVNULL, STDOUT, check_call, getoutput, run
 from itertools  import repeat, chain
+from operator   import itemgetter
 from random     import randrange, uniform, shuffle as randshuffle
 from shutil     import rmtree
 from pydub      import AudioSegment as AS
@@ -14,7 +15,7 @@ from re         import sub as re_sub
 
 from subprocessHelper import *
 from betterStutter    import stutterInputProcess
-from downloadYT       import downloadYT
+from download         import download
 from listHelper       import *
 from pathHelper       import *
 from addSounds        import addSounds
@@ -23,6 +24,7 @@ from ricecake         import ricecake
 from captions         import normalcaption as capN, impact as capI, poster as capP, cap as capC
 from ytp              import ytp
 
+DELIMITERS = "= :;"
 
 sign = lambda x: (-1 if x < 0 else 1)
 
@@ -36,12 +38,6 @@ def str_int(n):
 
 def all_in(l1, l2):
     return all(i in l2 for i in l1)
-
-def trySplitBy(string, keys, times = -1):
-    for i in keys:
-        if i in string:
-            return string.split(i, times)
-    return [string]
 
 def remove_prefix(t, pre):
     if t.lower().startswith(pre):
@@ -125,9 +121,6 @@ def removeGarbage(path, keepExtraFiles):
         return
     tryToDeleteDir(path)
 
-def strArgs(args):
-    return '|'.join([','.join(['='.join([(str(j)) for j in o]) for o in i]) for i in args])
-
 def forceNumber(n):
     n = re_sub(r'[^0-9.-]', '', n)
     n = n.replace('.', '#', 1).replace('.', '').replace('#', '.')
@@ -139,12 +132,12 @@ def forceNumber(n):
 def phraseArgs(args, par):
     final = []
     shorthands = {par[i][2]: i for i in par}
-    args = list(filter(None, trySplitBy(args, '|')))[:3]
+    args = list(filter(None, args.split('|')))[:3]
     for g in range(len(args)):
         group = []
         args[g] = trySplitBy(args[g], ",\n")
         for p in range(len(args[g])):
-            args[g][p] = [i.strip() for i in trySplitBy(args[g][p].strip(), "=:; ", 1)]
+            args[g][p] = [i.strip() for i in splitComplex(args[g][p].strip(), DELIMITERS, 1)]
             if len(args[g][p]) == 0:
                 continue
             if len(args[g][p]) == 1:
@@ -160,7 +153,7 @@ def phraseArgs(args, par):
 
             cPar = par[args[g][p][0]]
             if cPar[0] == S:
-                pass
+                args[g][p][1] = args[g][p][1].lstrip(DELIMITERS)
             else:
                 if args[g][p][1].lower() in ["false", "none"]:
                     continue
@@ -179,7 +172,7 @@ def hp(o):
     return o
 
 def strArgs(args):
-    return '|'.join( [','.join([f"{o['name']}-{o['order']}={o['value']}" for o in i]) for i in args] )
+    return '|'.join( [','.join([f"{o['name']}={o['value']}" for o in sorted(i, key = itemgetter('order'))]) for i in args] )
 
 def timecodeBreak(file, m):
     zero   = bytearray.fromhex("00000000")
@@ -790,11 +783,11 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             try:
                 if notNone(d['musicdelay']):
                     d['musicdelay'] = constrain(d['musicdelay'], 0, DURATION)
-                if downloadYT(f"{pat}/{e0}", d['music'], d['musicskip'], d['musicdelay']):
+                if download(f"{pat}/BG{e0}.mp3", d['music'], skip = d['musicskip'], delay = d['musicdelay'], duration = 120, video = False):
                     if len(SOXCMD) > 0:
                         exportSox(AUDPRE, "PRE_MUSIC")
                         AUDPRE = "PRE_MUSIC"
-                    qui(ffmpeg.filter([ffmpeg.input(f"{pat}/{AUDPRE}{e0}.wav"), ffmpeg.input(f"{pat}/BG{e0}.wav")], "amix", duration = "first").output(f"{pat}/MUSIC{e0}.wav")).run()
+                    qui(ffmpeg.filter([ffmpeg.input(f"{pat}/{AUDPRE}{e0}.wav"), ffmpeg.input(f"{pat}/BG{e0}.mp3")], "amix", duration = "first").output(f"{pat}/MUSIC{e0}.wav")).run()
                     return "MUSIC"
             except Exception as ex:
                 fixPrint("music error.", ex)
@@ -915,6 +908,13 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         customFilterBind[i]()
     timer("Custom filter time:")
 
+    if not toGif and notNone(d['repeatuntil']):
+        d['repeatuntil'] = constrain(d['repeatuntil'], 1, 45)
+        changedName = f'{addPrefix(newName, "REPEAT")}.mp4'
+        silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-stream_loop", "-1", "-i", newName, "-t", d['repeatuntil'], "-c", "copy", changedName])
+        remove(newName)
+        rename(changedName, newName)
+
     if notNone(d['selection']):
         newOut = ffmpeg.input(newName)
         before, after = [], []
@@ -949,14 +949,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             newOut.run()
             remove(newName)
             rename(f"{pat}/NEW_{e0}.mp4", newName)
-
-    if not toGif and notNone(d['repeatuntil']):
-        d['repeatuntil'] = constrain(d['repeatuntil'], 1, 45)
-        changedName = f'{addPrefix(newName, "REPEAT")}.mp4'
-        silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-stream_loop", "-1", newName, "-t", d['repeatuntil'], "-c", "copy", changedName])
-        # system(f'''ffmpeg -y -hide_banner -loglevel error -stream_loop -1 -i '{newName}' -t {d['repeatuntil']} -c copy {(changedName := f'{addPrefix(newName, "REPEAT")}.mp4')}''')
-        remove(newName)
-        rename(changedName, newName)
 
     if notNone(d['timecode']) and not disallowTimecodeBreak:
         d['timecode'] = int(constrain(d['timecode'], 1, 4))

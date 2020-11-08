@@ -21,11 +21,11 @@ def explore(now = None, path = None):
         else:
             try:
                 tt = (now - creation_date(i)) / (60 ** 2 * 24)
-                if tt > 10:
+                if tt > 10 and "@files" not in i:
                     print(str(tt)[:12].ljust(12), os.path.split(i)[1])
                     os.remove(i)
             except Exception as e:
                 print(e)
                 pass
 
-explore(time.time(), "Twitter")
+explore(time.time(), "V:")

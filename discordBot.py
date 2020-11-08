@@ -1,23 +1,25 @@
 import os, io, sys, time, shutil, random, discord, aiohttp, asyncio, threading, subprocess, datetime
 import sqlite3 as sql
 from PIL import Image
-from url import downloadVideo
 from math import ceil
 from getSens import getSens
 from fixPrint import fixPrint
+from download import download
 from destroyer import videoEdit
 from threadQue import *
+from listHelper import trySplitBy
 from imageCorrupt import imageCorrupt
 Popen = subprocess.Popen
 Thread = threading.Thread
 
-GUILD_MAX_USE_RATE = 8 #In seconds
-RESTRICTGUILDS = False
+MESSAGE_CHECK_AMOUNT = 10
 DIRECTORY = f"{getSens('dir')[0]}/@"  #/mnt/hgfs/VideoEditBot/Twitter/@"
 BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
 TAGLINE = 'https://discord.gg/aFrEBEN'  #"twitter.com/VideoEditBot"
+
+print("Starting Discord bot...")
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -38,7 +40,6 @@ def formatKey(l):
     return l.split('=')[1].strip().replace('"', '')
 
 TOKEN, guilds = getSens("discord", "guilds")
-guildList = [i.strip() for i in guilds.split(',')]
 patreonServerID = int(getSens("patreon_server")[0])
 patreonTierRoles = [int(i.strip()) for i in getSens("tier_roles")[0].split(',')]
 
@@ -84,7 +85,7 @@ timedGuilds = []
 timedUsers = []
 
 bot = discord.AutoShardedClient(status = discord.Game(name = TAGLINE))
-
+botIsReady = False
 
 def getTier(id, SET = "SUBSCRIBERS"):
     cur.execute(f"SELECT (teir) FROM {SET} where id = {id}")
@@ -108,7 +109,6 @@ cur = con.cursor()
 
 try: #Create if it doesn't exist
     cur.execute("CREATE TABLE SUBSCRIBERS (id, teir)")
-    # cur.execute("CREATE TABLE GUILDS (id, teir)")
 except sql.OperationalError as e:
     pass
 
@@ -119,19 +119,57 @@ async def updateSubscriptionList():
     while True:
         clearSubscribers()
         for i, v in enumerate(patreonTierRoles):
-            for m in srv.get_role(v).members:
+            for m in (memberList := srv.get_role(v).members):
                 addSubscriber(m.id, i + 1)
-        botIsReady = True
+            if not botIsReady: print(f"Found {len(memberList)} teir {i + 1} Pateron member(s).")
+        if not botIsReady:
+            print("Finished initial Patreon role check.")
+            print(f"Bot Guild count: {len(bot.guilds)}")
+            fixPrint("Discord bot started.")
+            botIsReady = True
         await asyncio.sleep(60 * 5)
 
-botIsReady = False
+
+async def tryTimedCommand(user, message):
+    global timedUsers, timedGuilds
+
+    currentTime = time.time()
+    if user.id != bot.user.id:
+
+        # userTier  = getTier(user.id)
+        # guildTier = getTier(message.guild.owner_id)
+        userTier, guildTier = 1, 2 #TEMP SHIT WAITING FOR VERTIF
+
+        userDelay  = (7  if userTier  == 1 else (3 if userTier  == 2 else 1)) if userTier  else False
+        guildDelay = (10 if guildTier == 1 else (5 if guildTier == 2 else 1)) if guildTier else 15
+
+        if userDelay and userDelay <= guildDelay:
+            for i, v in enumerate(timedUsers):
+                if v["id"] ==  user.id:
+                    if v["time"] < currentTime:
+                        v["time"] = currentTime + userDelay
+                    else:
+                        await message.channel.send(f"<@!{user}> Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
+                        return False
+                    break
+            else:
+                timedUsers.append({"id": user.id, "time": currentTime + userDelay})
+        else:
+            for i, v in enumerate(timedGuilds):
+                if v["id"] == message.guild.id:
+                    if v["time"] < currentTime:
+                        v["time"] = currentTime + guildDelay
+                    else:
+                        await message.channel.send(f"Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
+                        return False
+                    break
+            else:
+                timedGuilds.append({"id": message.guild.id, "time": currentTime + guildDelay})
+    return True
 
 @bot.event
 async def on_ready():
-    if not botIsReady:
-        fixPrint("Discord bot started.")
-        print(f"Bot Guild count: {len(bot.guilds)}")
-        await updateSubscriptionList()
+    if not botIsReady: await updateSubscriptionList()
 
 @bot.event
 async def on_message(message):
@@ -149,12 +187,6 @@ async def on_message(message):
 
     guildID = message.guild.id
 
-    if RESTRICTGUILDS:
-        if str(guildID) not in guildList:
-            await message.guild.leave()
-            fixPrint(f'"{message.guild.name}" not in guild ID list! leaving guild ID {guildID}.')
-            return
-
     async def post(x):
         await message.channel.send(x)
 
@@ -170,38 +202,38 @@ async def on_message(message):
 
     try:
         t = [len(i) for i in ["download", "downloader"] if ltxt.strip().startswith(i)]
-        if len(t) > 0:
+        if len(t) > 0 and await tryTimedCommand(user, message):
             t = max(t) + 1
             rgs = ' '.join(txt.strip()[t:].strip().split())
-            if rgs.count(' ') > 1:
-                rgs = rgs.split('|')
-            else:
-                rgs = rgs.split(' ')
+            rgs = trySplitBy(rgs, "|, ", 1)
             uniqueID = ''.join([str(random.randint(0, 9)) for i in range(10)])
             parentDir = os.getcwd()
             def downloadBackground(UNID):
                 j = rgs.copy()
                 fixPrint(f'''#\t{trim(f"Download - {rgs[0]}", MSG_DISPLAY_LEN)}''')
-                downloadVideo(rgs[0], f"{parentDir}/{UNID}")
-                return [j, UNID, user.id]
+                return [j, UNID, user.id, download(f"{parentDir}/{UNID}.mp4", rgs[0], duration = 110)]
             prc = await bot.loop.run_in_executor(None, downloadBackground, uniqueID)
             if prc is not None:
-                uniqueID = prc[1]
-                rgs = prc[0]
-                if len(rgs) > 1 and rgs[1].startswith("destroy"):
-                    rgs[1] = rgs[1][7:]
-                repl = '@'+chr(8206) #replace '@' symbols with this
-                await message.channel.send(f"destroy {rgs[1].replace('@', repl).strip()}" if len(rgs) > 1 else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
-                os.remove(f"{uniqueID}.mp4")
+                downloadFileName = f"{uniqueID}.mp4"
+                if prc[-1]:
+                    uniqueID = prc[1]
+                    rgs = prc[0]
+                    if len(rgs) > 1 and rgs[1].startswith("destroy"):
+                        rgs[1] = rgs[1][7:]
+                    repl = '@'+chr(8206) #replace '@' symbols with a replacement so that it can't tag things
+                    await message.channel.send(f"destroy {rgs[1].replace('@', repl).strip()}" if len(rgs) > 1 and len(rgs[1].strip()) > 0else f"<@{prc[2]}>", file = discord.File(f"{parentDir}/{uniqueID}.mp4"))
+                    os.remove(downloadFileName)
+                else:
+                    await post("There was an issue downloading your video, perhaps it isn't a valid URL or search query? If you think this is a mistake, please message a bug report to https://twitter.com/VideoEditBot")
+                    # if os.path.isfile(downloadFileName): os.remove(downloadFileName)
     except Exception as e:
         fixPrint(e)
-        await post("There was an issue downloading your video, perhaps it isn't a valid URL or search query? If you think this is a mistake, please message a bug report to https://twitter.com/VideoEditBot")
+        await post("This, ideally, should never be seen. However, as I am bad at programming, it can be seen. I'm most likely already working on it. Existance is pain.")
 
     if ltxt.strip() == "destroy help":
         await post("Command documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
         return
     
-    #print(ltxt)
     if ltxt.startswith("debug this"):
         print(ltxt)
     
@@ -213,67 +245,18 @@ async def on_message(message):
     elif ltxt.strip().startswith("videoeditbot"):
         prefixlength = 12
 
-    if prefixLength:
-        currentTime = time.time()
-
-        if user.id != bot.user.id:
-
-            userTier  = getTier(user.id)
-            guildTier = getTier(message.guild.owner.id)
-            userDelay  = (7  if userTier  == 1 else (3 if userTier  == 2 else 1)) if userTier  else False
-            guildDelay = (10 if guildTier == 1 else (5 if guildTier == 2 else 1)) if guildTier else 15
-
-            if userDelay and userDelay <= guildDelay:
-                for i, v in enumerate(timedUsers):
-                    if v["id"] ==  user.id:
-                        if v["time"] < currentTime:
-                            v["time"] = currentTime + userDelay
-                        else:
-                            await post(f"<@!{user}> Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
-                            return
-                        break
-                else:
-                    timedUsers.append({"id": user.id, "time": currentTime + userDelay})
-            else:
-                for i, v in enumerate(timedGuilds):
-                    if v["id"] == guildID:
-                        if v["time"] < currentTime:
-                            v["time"] = currentTime + guildDelay
-                        else:
-                            await post(f"Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
-                            return
-                        break
-                else:
-                    timedGuilds.append({"id": guildID, "time": currentTime + guildDelay})
-
-            # 
-
-            # if userTier := getTier(user.id):
-            #     userDelay = 7 if userTier == 1 else (3 if userTier == 2 else 1)
-            #     for i, v in enumerate(timedUsers):
-            #         if v["id"] ==  user.id:
-            #             if v["time"] < currentTime:
-            #                 v["time"] = currentTime + userDelay
-            #             else:
-            #                 await post(f"<@!{user}> Please wait {(seconds:=ceil(v['time'] - currentTime))} more second{'s' if seconds > 1 else ''} to use the bot again.")
-            #                 return
-            #             break
-            #     else:
-            #         timedUsers.append({"id": user.id, "time": currentTime + userDelay})
-            # else:
-                
-
+    if prefixLength and await tryTimedCommand(user, message):
         attach = None
         if len(message.attachments) > 0:
             attach = message.attachments[0]
         else:
             channel = message.channel
-            async for msg in channel.history(limit = 25):
+            async for msg in channel.history(limit = MESSAGE_CHECK_AMOUNT):
                 if len(msg.attachments) > 0:
                     attach = msg.attachments[0]
                     break
         if not attach:
-            await post("Could not find a video or image in the last 25 messages.")
+            await post(f"Could not find a video or image in the last {MESSAGE_CHECK_AMOUNT} messages.")
             return
         e = os.path.splitext(attach.filename)
         oldExt = e[1].lower()[1:]
@@ -300,34 +283,22 @@ async def on_message(message):
         try:
             await attach.save(uniqueID + '.' + oldExt)
         except Exception as e:
-            await post("There was an error while downloading your file. Contact Ganer if you think this is an error.")
+            await post("There was an error while downloading your file. Send a bug report to https://twitter.com/VideoEditBot if you think this is an error.")
             return
 
         process = None
         args = None
 
-        if len(ltxt) > 7 and ltxt[7] == 'i':
-            args = {
-                'f': imageCorrupt, 
-                'args': [uniqueID + '.' + oldExt, txt.strip()[prefixLength:]],
-                'gid': guildID
-            }
-        else:
-            args = {
-                'f': videoEdit, 
-                'args': [uniqueID + '.' + oldExt, txt.strip()[prefixLength:]],
-                'gid': guildID
-            }
+        args = {
+            'f': videoEdit, 
+            'args': [uniqueID + '.' + oldExt, txt.strip()[prefixLength:]],
+            'gid': guildID
+        }
 
         def func():
             args2 = args.copy()
-
-            if args2['f'] == imageCorrupt:
-                imageCorrupt(*args2['args'])
-                return [0, os.path.splitext(args2['args'][1])[0] + ".png", args2["gid"]]
-            else:
-                videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120)
-                return [videoEditResult[0], newFile, videoEditResult[1:], args2["gid"]]
+            videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120)
+            return [videoEditResult[0], newFile, videoEditResult[1:], args2["gid"]]
 
         prc = await bot.loop.run_in_executor(None, func) #Ok so what all this BS does it like run the function which calls the subprocess in async and make a copy of all the important variables into the function which also serves as a time barrel and copys them over to use once the subprocess finsihes i am at like sbsfgdhiu;lj; no sleep pelase
         for i in range(1): #Super hacky way to add a break statment
@@ -358,7 +329,6 @@ async def on_message(message):
                     shutil.move(prc[1], newLoc)
                     if os.path.splitext(prc[1])[1] == ".mp4":
                         thumbLoc = f"{thumbFold}/{os.path.splitext(prc[1])[0]}.jpg"
-                        # os.system(f"""ffmpeg -hide_banner -loglevel error -i '{newLoc}' -vframes 1 '{thumbLoc}'""")
                         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", newLoc, "-vframes", "1", thumbLoc])
                         img = Image.open(thumbLoc)
                         img.thumbnail((250, 250))
@@ -386,7 +356,6 @@ async def on_message(message):
 
     if dil == '*':
         return
-
 
     if ltxt.strip().startswith("avatar"):
         if len(message.mentions) > 0:
