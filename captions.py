@@ -17,16 +17,16 @@ def drawText(img, text, pos, leftAlign = False, mode = "impact", **kwargs):
     canvas = ImageDraw.Draw(img)
     if mode == "impact":
         FS = int((img.width / 6) / (1 + (min(4, len(text) / 58))))
-        font = ImageFont.truetype("impact_emoji.ttf", FS)
+        font = ImageFont.truetype("fonts/impact_emoji.ttf", FS)
     elif mode == "cap":
         FS = int((img.width / (6 + (len(text) / 10))))
-        font = ImageFont.truetype("cap_emoji.ttf", FS)
+        font = ImageFont.truetype("fonts/cap_emoji.ttf", FS)
         kwargs['outline'] = False
         kwargs['inColor'] = (0, 0, 0)
     elif mode == "normalcap":
         FS = int(img.width / 15)
         #font = ImageFont.truetype("arialbd.ttf", FS)
-        font = ImageFont.truetype("seguiemj.ttf", FS)
+        font = ImageFont.truetype("fonts/seguiemj.ttf", FS)
         kwargs['outline'] = False
         kwargs['inColor'] = (0, 0, 0)
     else:
@@ -126,7 +126,7 @@ def poster(width, height, cap = None, bottomcap = None):
 
     bottom = None
 
-    fName = "times_emoji.ttf"
+    fName = "fonts/times_emoji.ttf"
     if cap:
         font = ImageFont.truetype(fName, int(MP / 10))
         w, h = canvas.textsize(cap, font = font)
