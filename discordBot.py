@@ -117,16 +117,27 @@ async def updateSubscriptionList():
 
     srv = bot.get_guild(patreonServerID)
     while True:
-        clearSubscribers()
-        for i, v in enumerate(patreonTierRoles):
-            for m in (memberList := srv.get_role(v).members):
-                addSubscriber(m.id, i + 1)
-            if not botIsReady: print(f"Found {len(memberList)} teir {i + 1} Pateron member(s).")
-        if not botIsReady:
-            print("Finished initial Patreon role check.")
-            print(f"Bot Guild count: {len(bot.guilds)}")
-            fixPrint("Discord bot started.")
-            botIsReady = True
+        if srv:
+            clearSubscribers()
+            tierAmounts = [0 for i in range(len(patreonTierRoles))]
+            async for member in srv.fetch_members(limit = 1000000):
+                roles = [i.id for i in member.roles]
+                for i, v in enumerate(patreonTierRoles):
+                    if v in roles:
+                        addSubscriber(member.id, i + 1)
+                        tierAmounts[i] += 1
+                        break
+            if not botIsReady:
+                for i, v in enumerate(tierAmounts):
+                    print(f"Found {v} teir {i + 1} Pateron member(s).")
+
+            if not botIsReady:
+                print("Finished initial Patreon role check.")
+                print(f"Bot Guild count: {len(bot.guilds)}")
+                fixPrint("Discord bot started.")
+                botIsReady = True
+        else:
+            print("Couldn't get Pateron Discord server.")
         await asyncio.sleep(60 * 5)
 
 
@@ -136,9 +147,8 @@ async def tryTimedCommand(user, message):
     currentTime = time.time()
     if user.id != bot.user.id:
 
-        # userTier  = getTier(user.id)
-        # guildTier = getTier(message.guild.owner_id)
-        userTier, guildTier = 1, 2 #TEMP SHIT WAITING FOR VERTIF
+        userTier  = getTier(user.id)
+        guildTier = getTier(message.guild.owner_id)
 
         userDelay  = (7  if userTier  == 1 else (3 if userTier  == 2 else 1)) if userTier  else False
         guildDelay = (10 if guildTier == 1 else (5 if guildTier == 2 else 1)) if guildTier else 15

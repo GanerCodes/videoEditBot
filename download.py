@@ -1,7 +1,8 @@
-from os import path
+from os import path, makedirs
 from json import loads
 from requests import get
 from subprocessHelper import *
+import argparse
 
 VBR = "775k"
 ABR = "64k"
@@ -40,6 +41,8 @@ def addModifiers(cmd, skip = None, duration = None):
         cmd += ["-t", str(duration)]
 
 def download(name, url, skip = None, delay = None, duration = None, video = True, cookies = "cookies.txt"):
+    name = name.replace('\\', '/').replace('//', '/')
+    if not path.isdir(folder := path.split(name)[0]): makedirs(folder)
     url = url.replace('\n', '').strip()
     if video: delay = None
 
@@ -96,3 +99,14 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         print("Error on download command:", url, skip, delay, duration, video, ffmpegCommand, URLs, urlCMD)
         return False
     return True
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description = "Download a video based on a URL or query.")
+    parser.add_argument("-o", "--output"  , type = str  , dest = "output"  , help = "Output file name")
+    parser.add_argument("-u", "--url"     , type = str  , dest = "url"     , help = "Url OR search query")
+    parser.add_argument("-s", "--skip"    , type = float, dest = "skip"    , help = "Skip in video", default = None)
+    parser.add_argument("-d", "--duration", type = float, dest = "duration", help = "Max duration of downloaded video", default = None)  
+    args = parser.parse_args()
+    if not (args.output or args.url):
+        parser.error("Error. Output and Url are required.")
+    download(args.output, args.url, args.skip, duration = args.duration)
