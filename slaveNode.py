@@ -65,10 +65,10 @@ def processVideo(data, s):
 s = None
 hasStarted = False
 disconnected = False
+bot = discord.AutoShardedClient(intents = discord.Intents())
 
 def connect():
 	global s
-
 	try: s.close()
 	except: pass
 
@@ -80,41 +80,47 @@ def connect():
 		print("Couldn't connect to server.")
 	return False
 
+connect()
+
+def disconnectFix():
+	global disconnected, s
+	if connect():
+		SWHAP({'type': 'ID', 'ID': UNIQUE_ID}, s)
+		print("Disconnected, resending ID", UNIQUE_ID)
+		if hasStarted: 
+			SWHAP({'type': 'ready'}, s)
+			print("Disconnected, re-sending ready.")
+		disconnected = False
+	else:
+		disconnected = True
+
 def client():
-	global disconnected, hasStarted, token, s
+	global hasStarted, token, bot, s
 	while True: 
 		try:
-			connect()
-			if disconnected:
-				disconnected = False
-				SWHAP({'type': 'ID', 'ID': UNIQUE_ID}, s)
-				print("Disconnected, resending ID", UNIQUE_ID)
-				if hasStarted: 
-					SWHAP({'type': 'ready'}, s)
-					print("Disconnected, re-sending ready.")
-
 			while True:
 				if (data := receiveWithHeader(s)) != -1 and data:
 					if "GET_ID" in data:
 						print("Got token; returning ID", UNIQUE_ID)
 						SWHAP({'type': 'ID', 'ID': UNIQUE_ID}, s)
-						token = data['token']
-						if hasStarted: 
+						if data['token'] != token:
+							token = data['token']
+							bot.run(token)
+						if hasStarted:
 							SWHAP({'type': 'ready'}, s)
 							print("Sent ready.")
+
 					elif 'type' in data:
 						threading.Thread(target = processVideo, args = [data, s]).start()
 
 		except Exception as e:
 			print("Unable to connect to server:", e)
-			disconnected = True
+			disconnectFix()
 			time.sleep(1)
 
 threading.Thread(target = client).start()
 
 while not token: pass #Block until discord connection starts
-
-bot = discord.AutoShardedClient(intents = discord.Intents())
 
 def pingCheck():
 	global disconnected, s
@@ -122,15 +128,16 @@ def pingCheck():
 		try:
 			SWHAP('p', s)
 		except:
-			disconnected = True
 			print("Couldn't connect to server. Retrying.")
-			connect()
+			disconnectFix()
+		if disconnected:
+			disconnectFix()
 		time.sleep(5)
 threading.Thread(target = pingCheck).start()
 
 @bot.event
 async def on_ready():
-	global hasStarted, disconnected
+	global hasStarted
 
 	if not hasStarted:
 		hasStarted = True
@@ -140,8 +147,6 @@ async def on_ready():
 			print("Sent ready.")
 		except:
 			print("Couldn't send ready info.")
-			disconnected = True
-			connect()
+			disconnectFix()
 			pass
 		await bot.loop.create_task(queMessages())
-bot.run(token)
