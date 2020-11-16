@@ -18,7 +18,7 @@ def youtubeSearch(url):
             return False
         counter += 1
     try:
-        txt = txt[(start := txt.index("{", start := (txt.index(term := "ytInitialData") + len(term)))):txt.index("};", start) + 1]
+        txt = txt[(start := txt.index("{", start := (txt.index(term := "ytInitialData") + len(term)))): txt.index("};", start) + 1]
         t = loads(txt)["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"]
     except Exception as e:
         print(f'Error searching for query {url}. Error:', e)
@@ -96,7 +96,7 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
     # print(ffmpegCommand)
 
     if returnCode(ffmpegCommand) != 0:
-        print("Error on download command:", url, skip, delay, duration, video, ffmpegCommand, URLs, urlCMD)
+        print("Error on download command:", url, skip, delay, duration, video, ffmpegCommand, urlCMD)
         return False
     return True
 

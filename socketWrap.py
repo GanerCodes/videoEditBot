@@ -1,11 +1,21 @@
 import sys, time, socket, threading, subprocess
 from getSens import getSens
 
+
 RESTART_DELAY_TIME = 1
 
-HOST, PORT = getSens("log_ip")[0], 8080 #IP and port you want to send logs to
 
+HOST, PORT = getSens("log_ip")[0], 8080 #IP and port you want to send logs to
 process, ID = sys.argv[1], sys.argv[2]
+
+if len(sys.argv) > 3: 
+    HAS_NAME = False
+else:
+    HAS_NAME = True
+
+if HAS_NAME: prefix = f"[{getSens('name')[0]}] "
+else: prefix = ''
+
 canCom = 0
 s = socket.socket()
 
@@ -47,7 +57,9 @@ while 1:
         out = proc.stdout.readline().strip()
         print(out)
         if out != "":
-            send((ID + '～' + out).encode('utf-8'))
+            send((ID + '～' + prefix + out).encode('utf-8'))
     s.close()
-
+    try: proc.kill()
+    except: pass
+    print("[SocketWrap] Process ended. Resarting.")
     time.sleep(RESTART_DELAY_TIME)

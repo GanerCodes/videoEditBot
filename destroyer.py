@@ -65,18 +65,17 @@ def getImageRes(path):
     return Image.open(path).size
 
 def getDur(filename):
-    return getoutput(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
+    return getout(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
 
 def checkAudio(filename):
-    # ac = getoutput(f'''ffprobe -v error -of flat=s_ -select_streams 1 -show_entries stream=duration -of default=noprint_wrappers=1:nokey=1 '{filename}' ''')
-    ac = getoutput(["ffprobe", "-v", "error", "-of", "flat=s_", "-select_streams", "1", "-show_entries", "stream=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
+    ac = getout(["ffprobe", "-v", "error", "-of", "flat=s_", "-select_streams", "1", "-show_entries", "stream=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
     return not (ac == "null" or ac.strip() == "" or "no streams" in ac)
 
 
 def getSize(filename):
     # cmd = f'''ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x '{filename.replace(backslash, '/').replace('//', '/')}' '''
     cmd = ["ffprobe", "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", filename.replace('\\', '/').replace('//', '/')]
-    return [i.strip() for i in getoutput(cmd).split('x')]
+    return [i.strip() for i in getout(cmd).split('x')]
 
 def checkIfDurationIsUnderTime(name, time):
     nn = name
@@ -93,12 +92,7 @@ def checkIfDurationIsUnderTime(name, time):
             return False
     except Exception as e:
         print("TIMECHECK", e)
-        tryToDelete(nn)
-
-
-def tryToDelete(file):
-    if path.isfile(file):
-        remove(file)
+        tryToDeleteFile(nn)
 
 def notNone(x):
     return x is not None
@@ -111,10 +105,6 @@ def lim(x, y, m):
 
 def fv(x):
     return 2 * (int(x) >> 1)
-
-def tryToDeleteDir(dr):
-    if path.isdir(dr):
-        rmtree(dr)
 
 def removeGarbage(path, keepExtraFiles):
     if keepExtraFiles:
@@ -206,7 +196,7 @@ def timecodeBreak(file, m):
     new.write(byteData)
 
 def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
-    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'cap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
+    videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'topcap', 'bottomcap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
     d = {i: None for i in par}
@@ -393,6 +383,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if all_in(["topcaption", "bottomcaption"], orderedVideoFX):
         orderedVideoFX.remove("bottomcaption")
+    if all_in(["topcap", "bottomcap"], orderedVideoFX):
+        orderedVideoFX.remove("bottomcap")
     if all_in(["toptext", "bottomtext"], orderedVideoFX):
         orderedVideoFX.remove("bottomtext")
     if all_in(["wscale", "hscale"], orderedVideoFX):
@@ -520,9 +512,15 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             
         def cap():
             nonlocal video, audio, width, height
-            capC(int(width), int(height), cap = d['cap']).save(f"{pat}/cap{e0}.png")
-            video = ffmpeg.input(f"{pat}/cap{e0}.png").filter("pad",h=f"(ih+{height})+mod((ih+{height}), 2)").overlay(video, y = f"(main_h-{height})")
-            height = str(int(height) + getImageRes(f"{pat}/cap{e0}.png")[1])
+            if d['topcap']:
+                capC(int(width), int(height), cap = d['topcap']).save(f"{pat}/topcap{e0}.png")
+                video = ffmpeg.input(f"{pat}/topcap{e0}.png").filter("pad",h = f"(ih+{height})+mod((ih+{height}), 2)").overlay(video, y = f"(main_h-{height})")
+                height = str(int(height) + getImageRes(f"{pat}/topcap{e0}.png")[1])
+            if d['bottomcap']:
+                capC(int(width), int(height), cap = d['bottomcap']).save(f"{pat}/bottomcap{e0}.png")
+                capHeight = getImageRes(f"{pat}/bottomcap{e0}.png")[1]
+                video = video.filter("pad", h = f"ih+{capHeight}+mod((ih+{capHeight}), 2)").overlay(ffmpeg.input(f"{pat}/bottomcap{e0}.png"), y = f"main_h-{capHeight}")
+                height = str(int(height) + capHeight)
 
         def hypercam():
             nonlocal video, audio
@@ -689,7 +687,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             'bottomtext': toptext,
             'toptext': toptext,
             'normalcaption': normalcaption,
-            'cap': cap,
+            'topcap': cap,
+            'bottomcap': cap,
             'topcaption': topcaption,
             'bottomcaption': topcaption,
             'hypercam': hypercam,
@@ -929,7 +928,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
             if SW is None:
                 SW, SH = getSize(f"{pat}/START_{e0}.mp4")
-        if ET and d['dellast' ] is None:
+        if ET and d['dellast'] is None:
             end = ffmpeg.input(AFTER := f"{pat}/END_{e0}.mp4")
             after = [end.video.filter("fps", fps = 30)]
             if OGvidAudio:
@@ -1002,7 +1001,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "hypercam"      :[V, 1                   , "hypc"],
         "bandicam"      :[V, 1                   , "bndc"],
         "normalcaption" :[S, str(r(0, 100))      , "nc"],
-        "cap"           :[S, str(r(0, 100))      , "cap"],
+        "topcap"        :[S, str(r(0, 100))      , "cap"],
+        "bottomcap"     :[S, str(r(0, 100))      , "bcap"],
         "reverse"       :[V, 1                   , "rev"],
         "vreverse"      :[V, 1                   , "vrev"],
         "areverse"      :[V, 1                   , "arev"],
@@ -1085,18 +1085,17 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         makedirs(newPath)
         newFileName = f"{getName(properFileName)}.{getExt(properFileName)}"
         rename(f"{properFileName}", f"{newPath}/{newFileName}")
-
-        #chdir(f"{newPath}") #NOTE
         
         newExt = getExt(properFileName)
         for i, group in enumerate(args):
             oldFileName = chExt(newFileName, newExt)
-            newFileName = chName(properFileName, f"{i}_{chExt(properFileName, newExt)}") #f"{i}_{chExt(properFileName, newExt)}"
+            newFileName = chName(oldFileName, f"{i}_{chExt(getName(properFileName), newExt)}")
+            # print(f"{newPath}/{oldFileName}", "->", f"{newPath}/{newFileName}")
             rename(f"{newPath}/{oldFileName}", f"{newPath}/{newFileName}")
             newExt = destroy(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **kwargs)
         
         #chdir(parentPath) #NOTE
-        rename(f"{newPath}/{chExt(newFileName, newExt)}", f"{parentPath}/{chExt(properFileName, newExt)}")
+        rename(f"{newPath}/{chExt(newFileName, newExt)}", finalName := f"{parentPath}/{chExt(properFileName, newExt)}")
         removeGarbage(f"{newPath}", keepExtraFiles)
         success = True
     except Exception as ex:
@@ -1110,10 +1109,10 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
     chdir(parentPath)
 
     if success:
-        return [0]
+        return [0, finalName]
     else:
         fixPrint("Destroyer ran into an error.")
-        tryToDelete(properFileName)
+        tryToDeleteFile(properFileName)
         removeGarbage(f"{newPath}", keepExtraFiles)
         return [1]
 

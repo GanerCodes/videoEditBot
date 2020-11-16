@@ -27,7 +27,7 @@ def loud_run(command, **kawrgs):
         printEx(ex)
 
 def getout(command, **kawrgs):
-    return _run(command, text = True, stdout = PIPE, **kawrgs).stdout
+    return _run(command, text = True, stdout = PIPE, **kawrgs).stdout.strip()
 
 def getout_r(command, **kawrgs):
     r = _run(command, text = True, stdout = PIPE, **kawrgs)

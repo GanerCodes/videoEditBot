@@ -23,7 +23,8 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `toptext`       | `tt`        | Text   | -    | -            | Top text in impact font                                                                             |
 | `bottomtext`    | `bt`        | Text   | 0    | 100          | Bottom text in impact font                                                                          |
 | `normalcaption` | `nc`        | Text   | -    | -            | Standard caption at the top, like in screenshotted twitter posts.                                   |
-| `cap`           | `cap`       | Text   | 0    | 100          | Bold, centered, white caption at top                                                                |
+| `topcap`        | `cap`       | Text   | 0    | 100          | Bold, centered, white caption at top                                                                |
+| `bottomcap`     | `bcap`      | Text   | 0    | 100          | Bold, centered, white caption at bottom                                                             |
 | `holdframe`     | `hf`        | Number | 0.1  | 12           | Makes the video only the first frame, for # of seconds                                              |
 | `speed`         | `sp`        | Number | 0.5  | 25           | Slows down or speeds up video                                                                       |
 | `deepfry`       | `df`        | Number | 0    | 100          | Deep fries the video, reduces quality (via added saturation)                                        |

@@ -1,4 +1,8 @@
-from os import path
+import re
+from os import path, remove
+from shutil import rmtree
+
+cleanRgx = re.compile(r'[\\,\/]{1,}')
 
 def getName(file):
     return path.splitext(path.split(file)[1])[0]
@@ -14,3 +18,9 @@ def addPrefix(file, pre):
     return f"{getDir(file)}/{pre}{getName(file)}"
 def chNameKeepExt(file, newName):
     return f"{getdir(file)}/{getName(newName)}.{getExt(file)}"
+def cleanPath(path):
+	return cleanRgx.sub('/', path)
+def tryToDeleteFile(file):
+    if path.isfile(file): remove(file)
+def tryToDeleteDir(dr):
+    if path.isdir(dr): rmtree(dr)

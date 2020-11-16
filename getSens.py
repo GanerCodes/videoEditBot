@@ -3,6 +3,7 @@ def formatKey(l):
 		return l.split('=', 1)[1].strip().replace('"', '')
 	else:
 		return ''
+
 def getSens(*types, filename = "TOKENS.txt"):
 	types = list(types)
 	result = [''] * len(types)
