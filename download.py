@@ -56,7 +56,7 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
             url = youtubeSearch(url)
             if not url: return False
 
-    urlCMD = ["youtube-dlc", "--no-playlist", "-g"]
+    urlCMD = ["youtube-dl", "--no-playlist", "-g"]
     if cookies and path.isfile(cookies): urlCMD += ["--cookies", cookies]
     urlCMD += [url]
     URLs = getout_r(urlCMD)

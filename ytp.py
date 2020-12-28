@@ -23,9 +23,6 @@ def ytp(name, itters, hasAudio):
 	e = path.splitext(name)
 	e0 = getName(pat)
 
-	# cmd  = f"ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate '{name}'"
-	# cmd2 = f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 '{name}'"
-
 	t = round(eval(getoutput(["ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", name])))
 	d = round(eval(getoutput(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", name])))
 
@@ -51,37 +48,28 @@ def ytp(name, itters, hasAudio):
 	t, index = 0, 0
 	n = []
 
-	# aud = " -af areverse" if hasAudio else ""
-
 	for i in points:
 		getoutput(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", name, "-ss", str(t), "-to", str(i[0]), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/a{index}.mp4"])
-		# system(f'''ffmpeg -hide_banner -loglevel error -y -i '{name}' -ss {t}    -to {i[0]} -break_non_keyframes 1 '{pat}/YTP{e0}/a{index}.mp4' ''')
 		getoutput(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", name, "-ss", str(i[0]), "-to", str(i[0] + i[1]), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/b{index}.mp4"])
-		# system(f'''ffmpeg -hide_banner -loglevel error -y -i '{name}' -ss {i[0]} -to {i[0] + i[1]} -break_non_keyframes 1 '{pat}/YTP{e0}/b{index}.mp4' ''')
-		
 		args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f"{pat}/YTP{e0}/b{index}.mp4", "-vf", "reverse", f"{pat}/YTP{e0}/r{index}.mp4"]
 		if hasAudio:
 			args[9:9] = ["-af", "areverse"]
 		getoutput(args)
-		# system(f'''ffmpeg -hide_banner -loglevel error -y -i '{pat}/YTP{e0}/b{index}.mp4' -vf reverse{aud} '{pat}/YTP{e0}/r{index}.mp4' ''')
-		
+
 		n.append(f"a{index}.mp4")
 		n.append(f"b{index}.mp4")
 		n.append(f"r{index}.mp4")
 		n.append(f"b{index}.mp4")
 		t = i[0] + i[1]
 		index += 1
-	# system(f'''ffmpeg -hide_banner -loglevel error -y -i '{name}' -ss {t} -t {d} -break_non_keyframes 1 '{pat}/YTP{e0}/e.mp4' ''')
 	getoutput(["ffmpeg", "-hide_banner", "-loglevel", "-y", "-i", name, "-ss", str(t), "-t", str(d), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/e.mp4"])
 	n.append('e.mp4')
 
-	f = open(f'{pat}/YTP{e0}/temp.txt','w')
-	for i in n:
-		f.write(f"file '{i}'\n")
-	f.close()
+	with open(f'{pat}/YTP{e0}/temp.txt','w') as f:
+		for i in n:
+			f.write(f"file '{i}'\n")
 
 	getoutput(["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", f"{pat}/YTP{e0}/temp.txt", "-c", "copy", f"{pat}/_{e0}.mp4"])
-	# system(f'''ffmpeg -hide_banner -loglevel error -f concat -safe 0 -i '{pat}/YTP{e0}/temp.txt' -c copy '{pat}/_{e0}.mp4' ''')
 	remove(name)
 	rename(f"{pat}/_{e0}.mp4", name)
 	#shutil.rmtree(e[0])

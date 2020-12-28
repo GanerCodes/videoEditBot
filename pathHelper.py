@@ -4,6 +4,8 @@ from shutil import rmtree
 
 cleanRgx = re.compile(r'[\\,\/]{1,}')
 
+def absPath(file):
+    return path.abspath(file)
 def getName(file):
     return path.splitext(path.split(file)[1])[0]
 def getExt(file):

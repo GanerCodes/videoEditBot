@@ -6,7 +6,7 @@ from subprocess import DEVNULL, STDOUT, check_call, getoutput, run
 from itertools  import repeat, chain
 from operator   import itemgetter
 from random     import randrange, uniform, shuffle as randshuffle
-from shutil     import rmtree
+from shutil     import copyfile, rmtree
 from pydub      import AudioSegment as AS
 from math       import ceil
 from PIL        import Image
@@ -39,11 +39,6 @@ def str_int(n):
 def all_in(l1, l2):
     return all(i in l2 for i in l1)
 
-def remove_prefix(t, pre):
-    if t.lower().startswith(pre):
-        return t[len(pre):]
-    return t
-
 def constrain(val, min_val, max_val):
     if val == None:
         return None
@@ -71,9 +66,7 @@ def checkAudio(filename):
     ac = getout(["ffprobe", "-v", "error", "-of", "flat=s_", "-select_streams", "1", "-show_entries", "stream=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
     return not (ac == "null" or ac.strip() == "" or "no streams" in ac)
 
-
 def getSize(filename):
-    # cmd = f'''ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x '{filename.replace(backslash, '/').replace('//', '/')}' '''
     cmd = ["ffprobe", "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", filename.replace('\\', '/').replace('//', '/')]
     return [i.strip() for i in getout(cmd).split('x')]
 
@@ -81,7 +74,7 @@ def checkIfDurationIsUnderTime(name, time):
     nn = name
     try:
         h = float(getDur(name))
-        if h > 1000000000 or h < 0:
+        if h > 1000000 or h < 0:
             nn = f"{getDir(name)}/{getName(name)}TIMECHECK.mp4"
             silent_run(["ffmpeg", "-y", "-i", name, "-c", "copy", nn])
             h = float(getDur(nn))
@@ -91,7 +84,7 @@ def checkIfDurationIsUnderTime(name, time):
         else:
             return False
     except Exception as e:
-        print("TIMECHECK", e)
+        fixPrint("TIMECHECK", e)
         tryToDeleteFile(nn)
 
 def notNone(x):
@@ -158,11 +151,11 @@ def phraseArgs(args, par):
     return final
 
 def hp(o):
-    print(o)
+    fixPrint(o)
     return o
 
 def strArgs(args):
-    return '|'.join( [','.join([f"{o['name']}={o['value']}" for o in sorted(i, key = itemgetter('order'))]) for i in args] )
+    return '|'.join([','.join([f"{o['name']}={o['value']}" for o in sorted(i, key = itemgetter('order'))]) for i in args])
 
 def timecodeBreak(file, m):
     zero   = bytearray.fromhex("00000000")
@@ -208,6 +201,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     pat = getDir(file)
     e0  = getName(file)
 
+    outputArgs = {'preset': 'veryfast', 'pix_fmt': 'yuv420p'}
     resetTime = True
     ctt = 0
     def timer(msg = 'Duration'):
@@ -217,7 +211,7 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
             ctt = time()
             resetTime = not resetTime
         else:
-            print(f"{msg}: {time() - ctt}")
+            fixPrint(f"{msg}: {time() - ctt}")
             resetTime = not resetTime
 
     def getOrder(n):
@@ -257,11 +251,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     imageArray = [".png", ".jpg", ".jpeg"]
 
     if e[1] in imageArray:
-        #-hide_banner -loglevel {"fatal" if HIDE_ALL_FFMPEG else "error"}
-        #print(file,'->',f"{pat}/{e0}.mp4")
-        #loud_run(["ffmpeg", "-framerate", "1", f"{file}", "-c:v", "libx264", "-vf", f"scale=w=ceil((iw)/2)*2:h=ceil((ih)/2)*2{',fps=3' if toVideo else ''}", "-pix_fmt", "yuv420p", "-max_muxing_queue_size", "1024", f"{pat}/{e0}.mp4"])
-        
-        #system(f''' ffmpeg -hide_banner -loglevel error -framerate '1' -i '{file}' -c:v 'libx264' -r '2' -vf 'scale=w=ceil((iw)/2)*2:h=ceil((ih)/2)*2{',fps=3' if toVideo else ''}' -pix_fmt 'yuv420p' -max_muxing_queue_size '1024' '{pat}/{e0}.mp4' ''')
         silent_run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-framerate", "1", "-i", file, "-c:v", "libx264", "-r", "2", "-vf", f"scale=w=ceil((iw)/2)*2:h=ceil((ih)/2)*2{',fps=3' if toVideo else ''}", "-pix_fmt", "yuv420p", "-max_muxing_queue_size", "1024", f"{pat}/{e0}.mp4"])
 
         remove(file)
@@ -297,22 +286,19 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         endText = ["-to", str(max(0.1, d['end']))]
 
 
-    # system(f'''ffmpeg -hide_banner -loglevel fatal -i '{e[0]}{e[1]}' {startText}{endText}-reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/RFM{e0}.mp4' ''')
     tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", 1, "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 2, f'{pat}/RFM{e0}.mp4']
     tmpArgs = listReplace(tmpArgs, 1, startText + endText)
     tmpArgs = listReplace(tmpArgs, 2, filtText)
     silent_run(unwrap(removeNone(tmpArgs)))
     
     if notNone(d['selection']):
-
         if ST:
             tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-t", ST, "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/START_{e0}.mp4"]
             silent_run(unwrap(removeNone(listReplace(tmpArgs, 1, filtText))))
-            # system(f'''ffmpeg -hide_banner -loglevel fatal -i "{e[0]}{e[1]}" -t {ST} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/START_{e0}.mp4' ''')
         if ET:
             tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-ss", ET, "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/END_{e0}.mp4"]
             silent_run(unwrap(removeNone(listReplace(tmpArgs, 1, filtText))))
-            # system(f'''ffmpeg -hide_banner -loglevel fatal -i "{e[0]}{e[1]}" -ss {ET} -reset_timestamps 1 -break_non_keyframes 1 -max_muxing_queue_size 1024 -preset veryfast {filtText}'{pat}/END_{e0}.mp4' ''')
+
 
     remove(file)
     file = f"{pat}/{e0}.mp4"
@@ -330,9 +316,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if notNone(d['holdframe']):
         d['holdframe'] = constrain(d['holdframe'], 0.1, 12)
-        # system(f"""ffmpeg -hide_banner -loglevel error -i '{newName}' -frames:v 1 '{pat}/FIRST_FRAME_{e0}.png'""")
         silent_run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", newName, "-frames:v", "1", f"{pat}/FIRST_FRAME_{e0}.png"])
-        video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, t = d['holdframe'])
+        video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, r = 30, t = d['holdframe'])
         DURATION = d['holdframe']
 
     if toGif or not checkAudio(newName):
@@ -790,7 +775,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
                     return "MUSIC"
             except Exception as ex:
                 fixPrint("music error.", ex)
-                #printEx(ex)
                 return AUDPRE
         def sfx(SOXCMD, AUDPRE):
             if len(SOXCMD) > 0:
@@ -832,11 +816,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         video = split[0].filter("scale", "2*ceil(trunc(iw*480/ih)/2)", "480")
     video = video.filter("scale", w = "iw + mod(iw, 2)", h = "ih + mod(ih, 2)")
 
-    outputArgs = {'preset': 'veryfast'}
-    if notNone(d['glitch']):
-        d['glitch'] = 100000 - 1000 * constrain(d['glitch'], 1, 99)
-        outputArgs['bsf:v'] = f"noise={d['glitch']}"
-
     s = applyBitrate('_', VBR = d['vbr'], ABR = d['abr'], **outputArgs)
 
     if notNone(d['fisheye']):
@@ -853,12 +832,15 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
     remove(newName)
     rename(f"{pat}/_{e0}.mp4", newName)
 
-    customFilters = ['shuffle', 'stutter', 'ytp', 'datamosh', 'ricecake', 'clonemosh']
+    customFilters = ['shuffle', 'stutter', 'ytp', 'datamosh', 'ricecake', 'clonemosh', 'glitch']
     customFilters = sorted(filter(lambda x: notNone(d[x]), customFilters), key=getOrder)
 
     def FXshuffle():
         nonlocal newName, hasAudio, DURATION, d
         stutterInputProcess(newName, '', hasAudio, entireShuffle = True, dur = DURATION)
+    def FXglitch():
+        nonlocal newName
+        ricecake(newName, newName, 1, max(2, d['glitch'] / 12))
     def FXstutter():
         nonlocal newName, hasAudio, DURATION, d
         stutterInputProcess(newName, str(d['stutter']), hasAudio, dur = DURATION)
@@ -872,20 +854,17 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         if d['datamosh'] > 4:
             kint = int(100 - d['datamosh'] / 1.25)
             silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-x264-params", f"kint={kint}", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
-            # system(f'''ffmpeg -y -hide_banner -loglevel fatal -i '{newName}' -vcodec libx264 -x264-params keyint={kint} -max_muxing_queue_size 1024 '{pat}/1_{e0}.avi' ''')
         else:
             silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
-            # system(f'''ffmpeg -y -hide_banner -loglevel fatal -i '{newName}' -vcodec libx264 -max_muxing_queue_size 1024 '{pat}/1_{e0}.avi' ''')
         remove(newName)
         silent_run(["datamosh", "-o", f"{pat}/2_{e0}.avi", f"{pat}/1_{e0}.avi"], shell = True)
-        # system(f'''ffmpeg -hide_banner -loglevel fatal -i '{pat}/2_{e0}.avi' '{pat}/3_{e0}.mp4' ''')
         silent_run(["ffmpeg", "-hide_banner", "-loglevel", "fatal", "-i", f"{pat}/2_{e0}.avi", f"{pat}/3_{e0}.mp4"])
         remove(f"{pat}/2_{e0}.avi")
         rename(f"{pat}/3_{e0}.mp4", newName)
     def FXricecake():
         nonlocal newName, hasAudio, DURATION, d
-        d['ricecake'] = max(1, max(float(DURATION) / 15, 0.25) * max(1, int(constrain(int(d['ricecake']), 1, 100) / 10)))
-        ricecake(newName, d['ricecake'], hasAudio)
+        d['ricecake'] = constrain(d['ricecake'], 0, 100)
+        ricecake(newName, newName, 0.08 * (d['ricecake'] / 100), d['ricecake'] / 5, speed = False)
     def FXclonemosh():
         nonlocal hasAudio, DURATION, d, e
         d['clonemosh'] = max(1, int(constrain(int(d['clonemosh']), 1, 100) / 10))
@@ -900,7 +879,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
         'ytp': FXytp,
         'datamosh': FXdatamosh,
         'ricecake': FXricecake,
-        'clonemosh': FXclonemosh
+        'clonemosh': FXclonemosh,
+        'glitch': FXglitch
     }
     timer()
     for i in customFilters:
@@ -955,7 +935,6 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
     if (isImage := (oldFormat in imageArray and not toVideo)):
         properFileName = e[0] + ".png"
-        # system(f'''ffmpeg -y -hide_banner -loglevel fatal -i '{newName}' -ss 0 -vframes 1 '{properFileName}' ''')
         silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-i", newName, "-ss", "0", "-vframes", "1", properFileName])
         remove(newName)
         newExt = "png"
@@ -978,7 +957,8 @@ def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "
 
 V, S = float, str
 
-def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True):
+def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
+    oldArgs = args
     par = {
         "vbr"           :[V, round(r(0, 100))    , "vbr"],
         "abr"           :[V, round(r(0, 100))    , "abr"],
@@ -1070,12 +1050,14 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
 
     if durationUnder and getExt(properFileName) in ["mp4", "avi", "webm", "mov"]:
         if not checkIfDurationIsUnderTime(properFileName, durationUnder):
-            return [1, "The video is too long to process."]
+            return [2, "The video is too long to process."]
 
     fixPrint(f"Args{randomSel}: {strArgs(args)}")
 
     success = False
     newExt = None
+    newPath = None
+    backupFile, backupFileName = None, None
     try:
         if not path.isdir(f"{parentPath}/active"): 
             makedirs(f"{parentPath}/active")
@@ -1085,16 +1067,19 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         makedirs(newPath)
         newFileName = f"{getName(properFileName)}.{getExt(properFileName)}"
         rename(f"{properFileName}", f"{newPath}/{newFileName}")
+        if logErrors:
+            backupFileName = f"BACKUP_{newFileName}"
+            backupFile = f"{newPath}/{backupFileName}"
+            copyfile(f"{newPath}/{newFileName}", backupFile)
         
         newExt = getExt(properFileName)
         for i, group in enumerate(args):
             oldFileName = chExt(newFileName, newExt)
             newFileName = chName(oldFileName, f"{i}_{chExt(getName(properFileName), newExt)}")
-            # print(f"{newPath}/{oldFileName}", "->", f"{newPath}/{newFileName}")
             rename(f"{newPath}/{oldFileName}", f"{newPath}/{newFileName}")
             newExt = destroy(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **kwargs)
         
-        #chdir(parentPath) #NOTE
+        #chdir(parentPath) #NOTE (I have this note here from a long time ago idk what it's talking about ill leave it just in case)
         rename(f"{newPath}/{chExt(newFileName, newExt)}", finalName := f"{parentPath}/{chExt(properFileName, newExt)}")
         removeGarbage(f"{newPath}", keepExtraFiles)
         success = True
@@ -1112,6 +1097,16 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         return [0, finalName]
     else:
         fixPrint("Destroyer ran into an error.")
+
+        try:
+            if logErrors:
+                if not path.isdir(errDir := f"{parentPath}/ERRORS"): makedirs(errDir)
+                copyfile(backupFile, newBackFile := f"{errDir}/{backupFileName}")
+                with open(newBackFile + ".txt", 'w') as f: f.write(oldArgs+'\n\n'+strArgs(args))
+                fixPrint("Exported error video + args to file.")
+        except Exception as e:
+            fixPrint("Error backing up error.", e)
+
         tryToDeleteFile(properFileName)
         removeGarbage(f"{newPath}", keepExtraFiles)
         return [1]

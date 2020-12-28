@@ -64,11 +64,6 @@ def prettyRun(pre, cmd):
             fixPrint(f"#{tab}{pre}: {out.replace(nlin, '')}")
     return proc.returncode
 
-def remove_prefix(text, prefix):
-    if text.startswith(prefix):
-        return text[len(prefix):]
-    return text
-
 async def fetch(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as r:
@@ -221,7 +216,7 @@ async def on_message(message):
             repl = '@'+chr(8206)
             t = max(t) + 1
             rgs = ' '.join(txt.strip()[t:].strip().split())
-            rgs = splitComplex(rgs, "|, ", 1)
+            rgs = trySplitBy(rgs, "|, ", 1)
             if len(rgs) > 1 and rgs[1].startswith("destroy"):
                 rgs[1] = rgs[1][7:]
             
@@ -239,13 +234,26 @@ async def on_message(message):
         fixPrint(e)
         await post("This, ideally, should never be seen. However, as I am bad at programming, it can be seen. I'm most likely already working on it. Existance is pain.")
 
-    if ltxt.strip() == "destroy help":
+    if SWRE(ltxt, ['videoeditbot', 'veb', 'destroy'], "help"):
         await post("Command documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
         return
     
-    if ltxt.strip() == "videoeditbot servers":
+    if SWRE(ltxt, ['videoeditbot', 'veb'], "servers"):
         await post(f"Server list ({getClientListLength()}): {strClientList()}")
         return
+
+    if SWRE(ltxt, ['videoeditbot', 'veb'], "test"):
+        print("Got test request for:", IDList := getIDList())
+        for i in IDList:
+            addVideoProcessor({
+                'type': 'edit',
+                'url': "https://i.imgur.com/5AbBR58.jpg",
+                'guild': guildID,
+                'channel': message.channel.id,
+                'oldExt': "jpg",
+                'args': f"cap {i}",
+                'message': i
+            }, ID = i)
 
     if ltxt.startswith("debug this"):
         print(ltxt)
@@ -294,10 +302,9 @@ async def on_message(message):
 
         if user == bot.user:
             mentionID = message.mentions[0].id if len(message.mentions) > 0 else ''
-        else:
-            mentionID = user.id
+        else: mentionID = user.id
 
-        result = addVideoProcessor({
+        args = {
             'type': 'edit',
             'url': attach.url,
             'guild': guildID,
@@ -305,21 +312,13 @@ async def on_message(message):
             'oldExt': oldExt,
             'args': txt.strip()[prefixLength:].split('║')[0],
             'message': f"{random.choice(choices)} ║ <@{mentionID}>"
-        })
+        }
+        if len(spl := args['args'].split('>srv>', 1)) > 1:
+            args['args'] = spl[0].strip()
+            result = addVideoProcessor(args, ID = spl[1].strip())
+        else:
+            result = addVideoProcessor(args)
         if not result: await message.channel.send("Sorry, we couldn't find a server to edit this video. [likely the bot's being worked on atm]")
-
-    if ltxt == "videoeditbot test":
-        print("Got test request for:", IDList := getIDList())
-        for i in IDList:
-            addVideoProcessor({
-                'type': 'edit',
-                'url': "https://i.imgur.com/5AbBR58.jpg",
-                'guild': guildID,
-                'channel': message.channel.id,
-                'oldExt': "jpg",
-                'args': f"cap {i}",
-                'message': i
-            })
 
     if ltxt == "hat":
         await message.channel.send(file = discord.File(f"{DIRECTORY}/../@files/hat.png"))

@@ -27,3 +27,25 @@ def splitComplex(text, vals, count = -1):
         if len(m := list(filter(lambda x: type(x) == int, i))) > 0:
             return text.split(text[min(m)], count)
     return [text]
+
+def removeFirstPrefix(txt, pre):
+    if type(pre) == str:
+        pre = [pre]
+    for i in pre:
+        if txt.startswith(i):
+            return txt.removeprefix(i)
+    return txt
+
+def startWithAny(txt, starts):
+    if type(starts) == str:
+        starts = [starts]
+    for i in starts:
+        if txt.startswith(i):
+            return True
+    return False
+
+def SWRE(txt, starts, val):
+    if startWithAny(txt, starts): 
+        return removeFirstPrefix(txt, starts).strip() == val
+    else:
+        return False

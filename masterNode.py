@@ -17,8 +17,13 @@ def getIndexByID(ID):
 
 def removeFromClientList(ID):
     global clientList
-    if index := getIndexByID(ID):
-        return clientList.pop(index)
+    if type(index := getIndexByID(ID)) == int:
+        j = clientList.pop(index)
+        try:
+            j[1].close()
+        except:
+            pass
+        return j
     else:
         return False
 
@@ -30,8 +35,13 @@ def clientHandler(conn, addr, token = None):
 
     while True:
         if (t := receiveWithHeader(conn)) and t != -1:
-            if t == 'p': continue #Ping every ~5 seconds
-            if t['type'] == "ID" and not type(getIndexByID(ID := t['ID'].lower())) == int:
+            if type(t) == str: 
+                if t == 'p': 
+                    continue
+                else:
+                    print("Got a string", t)
+                    continue
+            elif t['type'] == "ID" and not type(getIndexByID(ID := t['ID'].lower())) == int:
                 clientList.append([ID, conn, False])
                 print("Added", ID, "to client list. Awaiting ready conformation.")
             elif t['type'] == "ready" and not clientList[getIndexByID(ID)][2]:
@@ -49,22 +59,34 @@ def clientHandler(conn, addr, token = None):
             return
 
 def addVideoProcessor(data, ID = None):
+    global clientList
     if len(clientList) > 0:
         random.shuffle(priorityList)
         newList = [i for i in priorityList if i['ID'] in [o[0] for o in clientList if o[2]]]
         if len(newList) > 0:
-            if ID:
+            if ID: #If explicit
                 if type(connectionIndex := getIndexByID(ID)) == int:
-                    SWHAP(data, clientList[connectionIndex][1])
-                    return True
+                    try:
+                        SWHAP(data, clientList[connectionIndex][1])
+                        return True
+                    except:
+                        removeFromClientList(ID)
+                        print("Explicit ID", ID, "couldn't be reached.")
+                        addVideoProcessor(data, ID)
                 else:
                     print("Specific client", ID, "could not be reached.")
-            else:
+                    return False
+            else: #If implicit
                 while True:
                     for i in newList:
                         if random.randrange(100) < i['chance'] and type(connectionIndex := getIndexByID(i['ID'])) == int:
-                            SWHAP(data, clientList[connectionIndex][1])
-                            return True
+                            try:
+                                SWHAP(data, clientList[connectionIndex][1])
+                                return True
+                            except:
+                                removeFromClientList(i['ID'])
+                                print("Implicit ID", i['ID'], "could not be reached.")
+                                addVideoProcessor(data, ID)
 
         else:
             print("Couldn't find an available client.")
