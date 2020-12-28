@@ -10,16 +10,14 @@ Create a file called "TOKENS.txt" and add sensitive info in this format:
 ```
 dir = XXX
 website = XXX
+silent = XXX [true or false]
 
 discord = XXX
 guilds = XXX, XXX, XXX...
 
-consumer_key = XXX
-consumer_secret = XXX
-access_key = XXX
-access_secret = XXX
-
 log_ip = XXX
+host_ip = XXX
+name = XXX
 ```
 
 There is also an optional "cookies.txt" file you can add that youtube-dl will use
