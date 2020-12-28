@@ -2,6 +2,7 @@ from os import path, makedirs
 from json import loads
 from requests import get
 from subprocessHelper import *
+from fixPrint import fixPrint
 import argparse
 
 VBR = "775k"
@@ -14,14 +15,14 @@ def youtubeSearch(url):
     while "ytInitialData" not in txt:
         txt = get(f"https://www.youtube.com/results?search_query={url}").text
         if counter > 5:
-            print(f'Found no results for query {url}. Error:', e)
+            fixPrint(f'Found no results for query {url}. Error:', e)
             return False
         counter += 1
     try:
         txt = txt[(start := txt.index("{", start := (txt.index(term := "ytInitialData") + len(term)))): txt.index("};", start) + 1]
         t = loads(txt)["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"]
     except Exception as e:
-        print(f'Error searching for query {url}. Error:', e)
+        fixPrint(f'Error searching for query {url}. Error:', e)
         return False
     for i in t:
         if next(iter(i)) == "videoRenderer":
@@ -64,7 +65,7 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
     if URLs[0] == 0:
         URLs = URLs[1].strip().split('\n')
     else:
-        print("URL Error, Return code:", URLs[0])
+        fixPrint("URL Error, Return code:", URLs[0])
         return False
     
     videoURL, audioURL = "", ""
@@ -93,10 +94,10 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         ffmpegCommand += ["-fflags", "+shortest"]
 
     ffmpegCommand += [name]
-    # print(ffmpegCommand)
+    # fixPrint(ffmpegCommand)
 
     if returnCode(ffmpegCommand) != 0:
-        print("Error on download command:", url, skip, delay, duration, video, ffmpegCommand, urlCMD)
+        fixPrint("Error on download command:", url, skip, delay, duration, video, ffmpegCommand, urlCMD)
         return False
     return True
 
