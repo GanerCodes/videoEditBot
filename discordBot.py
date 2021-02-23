@@ -129,10 +129,10 @@ async def updateSubscriptionList():
                             break
                 if not botIsReady:
                     for i, v in enumerate(tierAmounts):
-                        print(f"Found {v} teir {i + 1} Pateron member(s).")
+                        print(f"Found {v} tier {i + 1} Pateron member(s).")
             else:
                 if not botIsReady:
-                    print("Skipped Pateron teir checks.")
+                    print("Skipped Pateron tier checks.")
 
             if not botIsReady:
                 if CHECK_PATREON:
