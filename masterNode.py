@@ -2,6 +2,7 @@ import threading, socket, pickle, random, time
 from socketHelper import *
 
 priorityList = [
+    {'ID': 'johnny5', 'chance': 70},
     {'ID': 'dangered', 'chance': 70},
     {'ID': 'ganerserver', 'chance': 30}, 
     {'ID': 'thethirdone', 'chance': 30}
