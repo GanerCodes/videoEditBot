@@ -188,7 +188,7 @@ def timecodeBreak(file, m):
     new = open(file, 'wb')
     new.write(byteData)
 
-def destroy(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
+def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
     videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'topcap', 'bottomcap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
@@ -1077,7 +1077,7 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
             oldFileName = chExt(newFileName, newExt)
             newFileName = chName(oldFileName, f"{i}_{chExt(getName(properFileName), newExt)}")
             rename(f"{newPath}/{oldFileName}", f"{newPath}/{newFileName}")
-            newExt = destroy(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **kwargs)
+            newExt = edit(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **kwargs)
         
         #chdir(parentPath) #NOTE (I have this note here from a long time ago idk what it's talking about ill leave it just in case)
         rename(f"{newPath}/{chExt(newFileName, newExt)}", finalName := f"{parentPath}/{chExt(properFileName, newExt)}")
@@ -1089,14 +1089,14 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         success = False
 
     if SHOWTIMER:
-        print(f"Destroyer time: {time() - start_time}")
+        print(f"Editing time: {time() - start_time}")
 
     chdir(parentPath)
 
     if success:
         return [0, finalName]
     else:
-        fixPrint("Destroyer ran into an error.")
+        fixPrint("Editor ran into an error.")
 
         try:
             if logErrors:

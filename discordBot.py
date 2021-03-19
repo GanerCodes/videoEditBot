@@ -1,27 +1,32 @@
-import os, io, sys, time, shutil, random, discord, socket, pickle, aiohttp, asyncio, threading, subprocess, datetime
+import os, io, sys, time, shutil, random, discord, socket, pickle, aiohttp, asyncio, threading, subprocess, datetime, random, websockets, uuid
 import sqlite3 as sql
 from PIL import Image
 from math import ceil
 from getSens import getSens
 from fixPrint import fixPrint
 from download import download
-from destroyer import videoEdit
+from editor import videoEdit
 from threadQue import *
 from listHelper import *
-from masterNode import *
 from imageCorrupt import imageCorrupt
 Popen = subprocess.Popen
 Thread = threading.Thread
 
 MESSAGE_CHECK_AMOUNT = 10
-DIRECTORY = f"{getSens('dir')[0]}/@"  #/mnt/hgfs/VideoEditBot/Twitter/@"
+DIRECTORY = f"{getSens('dir')[0]}/@"
 BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = 'https://discord.gg/aFrEBEN'  #"twitter.com/VideoEditBot"
+TAGLINE = 'https://discord.gg/aFrEBEN'
 CHECK_PATREON = True
+IP_ADDR, PORT = "0.0.0.0", 6444
+VERBOSE_OUTPUT = False
 
 print("Starting Discord bot...")
+
+TOKEN, guilds = getSens("discord", "guilds")
+patreonServerID = int(getSens("patreon_server")[0])
+patreonTierRoles = [int(i.strip()) for i in getSens("tier_roles")[0].split(',')]
 
 if not os.path.isdir(p:=f"{DIRECTORY}"):
     os.makedirs(p)
@@ -41,9 +46,65 @@ class ThreadWithReturnValue(Thread):
 def formatKey(l):
     return l.split('=')[1].strip().replace('"', '')
 
-TOKEN, guilds = getSens("discord", "guilds")
-patreonServerID = int(getSens("patreon_server")[0])
-patreonTierRoles = [int(i.strip()) for i in getSens("tier_roles")[0].split(',')]
+priorityList = [
+    {'name': 'newserver', 'chance': 25},
+    {'name': 'johnny5', 'chance': 25},
+    {'name': 'ganerserver', 'chance': 35}, 
+]
+
+clients = {}
+async def videoEditBotMasterServer(w, path):
+    try:
+        ID = uuid.uuid4().hex
+        print(f"{ID}: Connected")
+        clients[ID] = {"websocket": w, "name": None, "canEdit": False, "chance": 0}
+        await w.send(pickle.dumps("getName"))
+        while True:
+            data = await w.recv()
+            try:
+                data = pickle.loads(data)
+                if VERBOSE_OUTPUT: fixPrint(f"{ID}: |||{data}")
+                if type(data) == dict:
+                    if data['type'] == 'name':
+                        clients[ID]['name'] = data['name']
+                        clients[ID]['chance'] = [i for i in priorityList if i['name'] == clients[ID]['name']][0]['chance']
+                        print(f"{ID}: Got name: {data['name']} (Edit chance: {clients[ID]['chance']}%)")
+                        await w.send(pickle.dumps({'type': 'key', 'key': TOKEN}))
+                    elif data['type'] == 'ready':
+                        clients[ID]['canEdit'] = True
+                        print(f"{ID}: {clients[ID]['name']} ready to edit!")
+            except Exception as e2:
+                raise Exception("Error unpickling.", data)
+    except Exception as e:
+        print(f"{ID}: Disconnecting. ({clients[ID]['name']})", e)
+        clients.pop(ID, None)
+        await w.close()
+def runServer():
+    print("Starting server...")
+    loop = asyncio.new_event_loop()
+    server = websockets.serve(videoEditBotMasterServer, IP_ADDR, PORT, loop = loop)
+    loop.run_until_complete(server)
+    loop.run_forever()
+async def addVideoProcessor(data, ID = None):
+    global clients
+    if ID == None:
+        if len(newClients := {i: clients[i] for i in clients if clients[i]['canEdit']}) > 0:
+            editClient = None
+            while editClient == None:
+                if random.random() <= (j := newClients[random.choice(list(newClients.keys()))])['chance'] / 100:
+                    editClient = j
+            # fixPrint("TEST|||||SENDING DATA", data)
+            await editClient['websocket'].send(pickle.dumps(data))
+            return True
+        return False
+    else:
+        newSocket = [clients[i]['websocket'] for i in clients if clients[i]['name'] == ID]
+        if len(newSocket) > 0:
+            await newSocket[0].send(pickle.dumps(data))
+            return True
+        return False
+
+threading.Thread(target = runServer).start()
 
 def UFID(ID, l):
     random.seed(ID)
@@ -84,36 +145,28 @@ timedUsers = []
 bot = discord.AutoShardedClient(status = discord.Game(name = TAGLINE))
 botIsReady = False
 
-startClientConnector(TOKEN)
-
+#Why the hell does this use a database? It's pointless
 def getTier(id, SET = "SUBSCRIBERS"):
     cur.execute(f"SELECT (teir) FROM {SET} where id = {id}")
     return j[0][0] if (j := cur.fetchall()) else False
-
 def removeID(id, c = True, SET = "SUBSCRIBERS"):
     cur.execute(f"DELETE FROM {SET} where id = {id}")
     if c:
         con.commit()
-
 def addSubscriber(id, teir, SET = "SUBSCRIBERS"):
     removeID(id, c = False, SET = SET)
     cur.execute(f"REPLACE INTO {SET} (id, teir) VALUES ({id}, {teir})")
     con.commit()
-
 def clearSubscribers(SET = "SUBSCRIBERS"):
     cur.execute(f"DELETE FROM {SET}")
-
 con = sql.connect('PATREON.db')
 cur = con.cursor()
-
 try: #Create if it doesn't exist
     cur.execute("CREATE TABLE SUBSCRIBERS (id, teir)")
 except sql.OperationalError as e:
     pass
-
 async def updateSubscriptionList():
     global botIsReady
-
     srv = await bot.fetch_guild(patreonServerID)
     while True:
         if srv:
@@ -187,6 +240,8 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    global VERBOSE_OUTPUT
+
     if not botIsReady: return
 
     if DISPLAY_MESSAGES:
@@ -221,7 +276,7 @@ async def on_message(message):
                 rgs[1] = rgs[1][7:]
             
             replyMessage = (f"destroy {rgs[1].replace('@', repl).strip()} ║ " if (len(rgs) > 1 and len(rgs[1].strip()) > 0) else '') + f"<@{user.id}>"
-            result = addVideoProcessor({
+            result = await addVideoProcessor({
                 'type': 'download',
                 'url': rgs[0],
                 'guild': guildID,
@@ -239,13 +294,13 @@ async def on_message(message):
         return
     
     if SWRE(ltxt, ['videoeditbot', 'veb'], "servers"):
-        await post(f"Server list ({getClientListLength()}): {strClientList()}")
+        await post(f"Server list ({len(clients)}): {[clients[i]['name'] for i in clients]}")
         return
 
     if SWRE(ltxt, ['videoeditbot', 'veb'], "test"):
-        print("Got test request for:", IDList := getIDList())
-        for i in IDList:
-            addVideoProcessor({
+        print("Got test request for:", clientNameList := [clients[i]['name'] for i in clients])
+        for i in clientNameList:
+            await addVideoProcessor({
                 'type': 'edit',
                 'url': "https://i.imgur.com/5AbBR58.jpg",
                 'guild': guildID,
@@ -315,13 +370,22 @@ async def on_message(message):
         }
         if len(spl := args['args'].split('>srv>', 1)) > 1:
             args['args'] = spl[0].strip()
-            result = addVideoProcessor(args, ID = spl[1].strip())
+            result = await addVideoProcessor(args, ID = spl[1].strip())
         else:
-            result = addVideoProcessor(args)
+            result = await addVideoProcessor(args)
         if not result: await message.channel.send("Sorry, we couldn't find a server to edit this video. [likely the bot's being worked on atm]")
 
     if ltxt == "hat":
         await message.channel.send(file = discord.File(f"{DIRECTORY}/../@files/hat.png"))
+        return
+
+    if ltxt == "verbose_veb_on":
+        for i in clients: await clients[i]['websocket'].send(pickle.dumps("verbose_veb_on"))
+        print("Verbose output set to:", VERBOSE_OUTPUT := True)
+        return
+    if ltxt == "verbose_veb_off":
+        for i in clients: await clients[i]['websocket'].send(pickle.dumps("verbose_veb_off"))
+        print("Verbose output set to:", VERBOSE_OUTPUT := False)
         return
 
     if dil == '*':
@@ -334,107 +398,5 @@ async def on_message(message):
         elif ltxt.strip() == "avatar":
             await post(str(user.avatar_url))
             return
-
-    # now = datetime.datetime.now()
-    # millis = str(int(round(time.time() * 1000)))
-    # uniqueID = f"{''.join([str(random.randint(0, 9)) for i in range(10)])}_{millis}"
-    # newFile = uniqueID + '.' + newExt
-    # try:
-    #     await attach.save(uniqueID + '.' + oldExt)
-    # except Exception as e:
-    #     await post("There was an error while downloading your file. Send a bug report to https://twitter.com/VideoEditBot if you think this is an error.")
-    #     return
-
-    # process = None
-    # args = None
-
-    # args = {
-    #     'f': videoEdit, 
-    #     'args': [uniqueID + '.' + oldExt, txt.strip()[prefixLength:]],
-    #     'gid': guildID
-    # }
-
-    # def func():
-    #     args2 = args.copy()
-    #     videoEditResult = videoEdit(*args2['args'], fixPrint = botPrint, durationUnder = 120)
-    #     return [videoEditResult[0], newFile, videoEditResult[1:], args2["gid"]]
-
-    # prc = await bot.loop.run_in_executor(None, func) #Ok so what all this BS does it like run the function which calls the subprocess in async and make a copy of all the important variables into the function which also serves as a time barrel and copys them over to use once the subprocess finsihes i am at like sbsfgdhiu;lj; no sleep pelase
-    # for i in range(1): #Super hacky way to add a break statment
-    #     if prc[0] != None:
-    #         if prc[0] != 0:
-    #             if os.path.isfile(prc[1]):
-    #                 os.remove(prc[1])
-    #             if len(prc[2]) < 1: 
-    #                 await post(f"There was an error processing your file. Contact Ganer if you think this is an error. (code {prc[0]})")
-    #             else:
-    #                 await post(f"Sorry, but there was an error editing your video. Error: {prc[2][0 ]}")
-    #             break
-
-    #         try:
-    #             fileSize = os.path.getsize(prc[1]) / (1000 ** 2)
-    #         except Exception as e:
-    #             print(e)
-    #             await post(f"There was an error processing your file. Contact Ganer if you think this is an error.")
-    #             break
-
-    #         newDir = f"{DIRECTORY}/{prc[3]}"
-    #         newLoc = f"{newDir}/{prc[1]}"
-    #         newURL = f"{BASE_URL}/{prc[3]}/{prc[1]}"
-    #         thumbFold = f"{newDir}/thumb"
-    #         try:
-    #             if not os.path.isdir(thumbFold):
-    #                 os.makedirs(thumbFold)
-    #             shutil.move(prc[1], newLoc)
-    #             if os.path.splitext(prc[1])[1] == ".mp4":
-    #                 thumbLoc = f"{thumbFold}/{os.path.splitext(prc[1])[0]}.jpg"
-    #                 subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", newLoc, "-vframes", "1", thumbLoc])
-    #                 img = Image.open(thumbLoc)
-    #                 img.thumbnail((250, 250))
-    #                 img.save(thumbLoc)
-    #         except Exception as e:
-    #             fixPrint(e)
-    #             await post(f"There was an error processing your file. Contact Ganer if you think this is an error.")
-    #             break
-    #         if fileSize > 8:
-    #             await post(f"The file was too large to upload to discord, backup link: {newURL}")
-    #         else:
-    #             try:
-    #                 await message.channel.send(random.choice(choices), files = [discord.File(newLoc)])
-    #             except Exception as e2:
-    #                 try:
-    #                     await post(f"There was an error uploading your file to discord, backup link: {newURL}")
-    #                 except Exception as e3:
-    #                     try:
-    #                         await post(f"Please tag ganer. {e3}")
-    #                     except Exception as ex:
-    #                         fixPrint("ERROR: ", str(ex))
-    # following stuff I'll add to my own bot at some point
-    # if ltxt.startswith("giveganerrole"):
-    #     try:
-    #         roleName = remove_prefix(ltxt.strip(), "giveganerrole").strip()
-    #         ganer = message.guild.get_member(132599295630245888)
-    #         for i in message.guild.roles:
-    #             if str(i.id) == roleName.lower():
-    #                 fixPrint(i)
-    #                 try:
-    #                     await ganer.add_roles(i)
-    #                 except Exception as b:
-    #                     pass
-    #                 fixPrint(f"Sucessfully gave ganer {roleName}!")
-    #     except Exception as e:
-    #         fixPrint("Error giving Ganer a role,", e)
-    #     return
-
-    # if "camera" in ltxt and "ganer" in ltxt:
-    #     await post("The settings aren't what's wrong, you are")
-
-    # if ltxt.replace('?', '').replace('\n', '') == "who am i":
-    #     await post("What are you even saying?")
-    #     return
-
-    # hCount = ltxt.count('h')
-    # if hCount > 24:
-    #     await post(f"Your message contains {hCount} h's")
 
 bot.run(TOKEN)
