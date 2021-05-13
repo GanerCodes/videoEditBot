@@ -6,6 +6,13 @@ from download import download
 from getSens import getSens
 from fixPrint import fixPrint
 
+import logging
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
+
 fixPrint("Starting renderer...")
 
 IP_ADDR = getSens("host_ip")[0]
@@ -130,6 +137,8 @@ async def queMessages():
                     await channel.send(msg['message'] + f' [{NAME}]')
             except Exception as e:
                 print("Error in queMessages()!:", e)
+            await asyncio.sleep(0.1)
+        await asyncio.sleep(0.5)
 
 
 
@@ -140,6 +149,7 @@ bot = discord.AutoShardedClient(intents = discord.Intents())
 @bot.event
 async def on_ready():
     global isReady, w
+    print("ON_READY() TRIGGERED")
     if not isReady:
         isReady = True
         await w.send(pickle.dumps({'type': 'ready'}))

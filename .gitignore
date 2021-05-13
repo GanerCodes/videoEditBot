@@ -1,5 +1,4 @@
 TOKENS.txt
-/*.mp4
 /*.jpg
 /*.jpeg
 /*.png
@@ -24,3 +23,4 @@ tmpFiles
 TMPDIR
 ERRORS
 OLDSHIT
+discord.log

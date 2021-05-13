@@ -51,8 +51,8 @@ def send(msg):
     if    canCom < 1: threadMsg(msg)
     else: canCom -= 1
 
-print("[SocketWrap] Starting process.")
 while 1:
+    print("[SocketWrap] starting process.")
     proc = subprocess.Popen(process, stdout = subprocess.PIPE, universal_newlines = True, shell = True)
     while proc.poll() is None:
         out = proc.stdout.readline().strip()

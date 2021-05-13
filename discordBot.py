@@ -182,10 +182,10 @@ async def updateSubscriptionList():
                             break
                 if not botIsReady:
                     for i, v in enumerate(tierAmounts):
-                        print(f"Found {v} tier {i + 1} Pateron member(s).")
+                        print(f"Found {v} tier {i + 1} Patreon member(s).")
             else:
                 if not botIsReady:
-                    print("Skipped Pateron tier checks.")
+                    print("Skipped Patreon tier checks.")
 
             if not botIsReady:
                 if CHECK_PATREON:
@@ -194,7 +194,7 @@ async def updateSubscriptionList():
                 fixPrint("Discord bot started.")
                 botIsReady = True
         else:
-            print("Couldn't get Pateron Discord server.")
+            print("Couldn't get Patreon Discord server.")
         await asyncio.sleep(60 * 5)
 
 
@@ -236,6 +236,7 @@ async def tryTimedCommand(user, message):
 
 @bot.event
 async def on_ready():
+    print("ON_READY() TRIGGERED")
     if not botIsReady: await updateSubscriptionList()
 
 @bot.event
@@ -324,9 +325,10 @@ async def on_message(message):
         attach = None
         if len(message.attachments) > 0:
             attach = message.attachments[0]
+        elif message.reference and len(tmpDat := (await message.channel.fetch_message(message.reference.message_id)).attachments) > 0:
+            attach = tmpDat[0]
         else:
-            channel = message.channel
-            async for msg in channel.history(limit = MESSAGE_CHECK_AMOUNT):
+            async for msg in message.channel.history(limit = MESSAGE_CHECK_AMOUNT):
                 if len(msg.attachments) > 0:
                     attach = msg.attachments[0]
                     break
@@ -352,7 +354,7 @@ async def on_message(message):
             await post("File format unavailable.\nFile format list: webm, mp4, mov, gif, jpg/jpeg, png")
             return
 
-        choices = ["h", "Here ya go", "Is this one as bad as the last one?", "هي لعبة الكترونية", "That moment when", "New punjabi movies 2014 full movie free download hd 1080p", "Yo mama moment"]
+        choices = ["h", "Here ya go", "You can help support the bot and get extra perks through Patreon! (<https://www.patreon.com/videoeditbot>)", "Is this one as bad as the last one?", "هي لعبة الكترونية", "That moment when", "New punjabi movies 2014 full movie free download hd 1080p", "Yo mama moment"]
         if guildID == 463054124766986261: choices.append("your autism, madam")
 
         if user == bot.user:

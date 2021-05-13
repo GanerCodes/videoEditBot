@@ -15,6 +15,7 @@ from re         import sub as re_sub
 
 from subprocessHelper import *
 from betterStutter    import stutterInputProcess
+from videoCrasher     import videoCrasher
 from download         import download
 from listHelper       import *
 from pathHelper       import *
@@ -260,7 +261,7 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
             d['holdframe'] = 10
         else:
             removeAudioFilters()
-            removeFilters = "reverse,vreverse,areverse,ytp,datamosh,clonemosh,ricecake,shake,stutter,shuffle,lag,rlag,repeatuntil".split(',')
+            removeFilters = "reverse,vreverse,areverse,ytp,datamosh,clonemosh,ricecake,shake,stutter,shuffle,lag,rlag,repeatuntil,crash".split(',')
             for i in removeFilters:
                 d[i] = None
     else:
@@ -279,7 +280,7 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
     if notNone(d['start']):
         d['start'] = constrain(float(d['start']), 0, 30000) + 3.5 / 30
         ST = d['start']
-        startText = ["-ss", ST]
+        startText = ["-ss", str(ST)]
     if notNone(d['end']):
         d['end'] =   constrain(float(d['end'  ]), 0, 30000)
         ET = d['end']
@@ -293,10 +294,11 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
     
     if notNone(d['selection']):
         if ST:
-            tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-t", ST, "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/START_{e0}.mp4"]
+            tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-t", str(ST), "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/START_{e0}.mp4"]
             silent_run(unwrap(removeNone(listReplace(tmpArgs, 1, filtText))))
         if ET:
-            tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-ss", ET, "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/END_{e0}.mp4"]
+            tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-ss", str(ET), "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/END_{e0}.mp4"]
+            print("WHAT", tmpArgs, ET)
             silent_run(unwrap(removeNone(listReplace(tmpArgs, 1, filtText))))
 
 
@@ -929,6 +931,9 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
             remove(newName)
             rename(f"{pat}/NEW_{e0}.mp4", newName)
 
+
+    if notNone(d['crash']) and not disallowTimecodeBreak:
+        videoCrasher(newName, f"{parentPath}/append.mp4", newName)
     if notNone(d['timecode']) and not disallowTimecodeBreak:
         d['timecode'] = int(constrain(d['timecode'], 1, 4))
         timecodeBreak(newName, d['timecode'])
@@ -967,6 +972,7 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "contrast"      :[V, round(r(0, 100))    , "ct"],
         "speed"         :[V, r(-4, 4)            , "sp"],
         "timecode"      :[V, None                , "timc"],
+        "crash"         :[V, None                , "crsh"],
         "bass"          :[V, round(r(0, 100))    , "bs"],
         "shuffle"       :[V, None                , "sh"],
         "toptext"       :[S, str(r(0, 100))      , "tt"],
