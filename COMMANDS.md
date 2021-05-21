@@ -81,3 +81,4 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `glitch`        | `glch`      | Number | 1    | 100          | Makes the video corrupted                                                                           |
 | `repeatuntil`   | `repu`      | Number | 1    | 45           | Repeats video until this time is reached                                                            |
 | `timecode`      | `timc`      | Number | 1    | 4            | Messes with the video's timecode metadata. Only applies to Discord bot.                             |
+| `crash`         | `crsh`      | -      | -    | -            | Makes the video crash when it concludes. Only applies to Discord bot.                               |
