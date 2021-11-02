@@ -3,3 +3,4 @@ ffmpeg-python
 discord.py
 Pillow
 pydub
+yt-dlp
