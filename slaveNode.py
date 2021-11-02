@@ -1,4 +1,4 @@
-import threading, requests, discord, asyncio, websockets, pickle, random, time, sys, psutil, os
+import threading, traceback, requests, discord, asyncio, websockets, pickle, random, time, sys, psutil, os
 from socketHelper import *
 from pathHelper import chExt, cleanPath, tryToDeleteFile
 from editor import videoEdit
@@ -23,47 +23,46 @@ tmpDir = "TMPDIR"
 VERBOSE_OUTPUT = False
 w = None
 isReady = False
-
 botKey = None
 
 messageQue = []
 def processVideo(data): #Expecting: type, oldExt, url, channel, message
-  global messageQue
+    global messageQue
 
-  if VERBOSE_OUTPUT: fixPrint("ProcessVideo DATA:", data)
+    if VERBOSE_OUTPUT: fixPrint("ProcessVideo DATA:", data)
 
-  millis = str(int(round(time.time() * 1000)))
-  uniqueID = f"{''.join([str(random.randint(0, 9)) for i in range(10)])}_{millis}"
-  if not os.path.isdir(tmpDir): os.makedirs(tmpDir)
+    millis = str(int(round(time.time() * 1000)))
+    uniqueID = f"{''.join([str(random.randint(0, 9)) for i in range(10)])}_{millis}"
+    if not os.path.isdir(tmpDir): os.makedirs(tmpDir)
 
-  if data['type'] == 'edit':
-      newFile = cleanPath(f"{tmpDir}/{uniqueID}.{data['oldExt']}")
-      try:
-          with open(newFile, "wb") as f:
-              f.write(requests.get(data['url'], allow_redirects = True).content)
-      except:
-          messageQue += [{"channel": data["channel"], "type": "error", "message": "There was an error while downloading your file."}]
-          return
+    if data['type'] == 'edit':
+        newFile = cleanPath(f"{tmpDir}/{uniqueID}.{data['oldExt']}")
+        try:
+            with open(newFile, "wb") as f:
+                f.write(requests.get(data['url'], allow_redirects = True).content)
+        except:
+            messageQue += [{"channel": data["channel"], "type": "error", "message": "There was an error while downloading your file."}]
+            return
 
-      VEB_RESULT = videoEdit(newFile, data['args'], durationUnder = 120, logErrors = True)
-      if VERBOSE_OUTPUT:
-        print("VEB_RESULT:", VEB_RESULT)
-      if VEB_RESULT[0] == 0:
-          if os.path.getsize(VEB_RESULT[1]) < 8 * 1024 ** 2:
-              messageQue += [{"channel": data["channel"], "type": "file", "file": VEB_RESULT[1], "message": data["message"]}]
-          else:
-              messageQue += [{"channel": data["channel"], "type": "error", "message": f"Sorry, but the output file is too large."}]
-              tryToDeleteFile(VEB_RESULT[1])
-      else:
-          msg = "Something went wrong editing your file, sorry." if len(VEB_RESULT) < 2 else ("Error: " + VEB_RESULT[1])
-          messageQue += [{"channel": data["channel"], "type": "error", "message": msg}]
-  elif data['type'] == 'download':
-      fixPrint(f"Download - {data['url']}")
-      if download(fileName := f"{tmpDir}/{uniqueID}.mp4", data['url'], duration = 110):
-          messageQue += [{"channel": data["channel"], "type": "file", "message": data['message'], "file": fileName}]
-      else:
-          messageQue += [{"channel": data["channel"], "type": "error", "message": "Sorry, something went wrong downloading your video."}]
-          tryToDeleteFile(fileName)
+        VEB_RESULT = videoEdit(newFile, data['args'], durationUnder = 120, logErrors = True)
+        if VERBOSE_OUTPUT:
+            print("VEB_RESULT:", VEB_RESULT)
+        if VEB_RESULT[0] == 0:
+            if os.path.getsize(VEB_RESULT[1]) < 8 * 1024 ** 2:
+                messageQue += [{"channel": data["channel"], "type": "file", "file": VEB_RESULT[1], "message": data["message"]}]
+            else:
+                messageQue += [{"channel": data["channel"], "type": "error", "message": f"Sorry, but the output file is too large."}]
+                tryToDeleteFile(VEB_RESULT[1])
+        else:
+            msg = "Something went wrong editing your file, sorry." if len(VEB_RESULT) < 2 else ("Error: " + VEB_RESULT[1])
+            messageQue += [{"channel": data["channel"], "type": "error", "message": msg}]
+    elif data['type'] == 'download':
+        fixPrint(f"Download - {data['url']}")
+        if download(fileName := f"{tmpDir}/{uniqueID}.mp4", data['url'], duration = 110):
+            messageQue += [{"channel": data["channel"], "type": "file", "message": data['message'], "file": fileName}]
+        else:
+            messageQue += [{"channel": data["channel"], "type": "error", "message": "Sorry, something went wrong downloading your video."}]
+            tryToDeleteFile(fileName)
 
 async def videoEditBotClient():
     global VERBOSE_OUTPUT, botKey, w
@@ -106,6 +105,7 @@ async def videoEditBotClient():
                                     await w.send(pickle.dumps({'type': 'ready'}))
             except Exception as e:
                 await w.close()
+                traceback.print_exc()
                 raise Exception(f"SOme shit went wack, error: {e}")
         except Exception as err:
             fixPrint(f"Error; {err}")
@@ -137,10 +137,8 @@ async def queMessages():
                     await channel.send(msg['message'] + f' [{NAME}]')
             except Exception as e:
                 print("Error in queMessages()!:", e)
-            await asyncio.sleep(0.1)
-        await asyncio.sleep(0.5)
-
-
+            await asyncio.sleep(0.2)
+        await asyncio.sleep(1)
 
 while botKey == None: pass
 

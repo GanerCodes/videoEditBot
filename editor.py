@@ -261,7 +261,7 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
             d['holdframe'] = 10
         else:
             removeAudioFilters()
-            removeFilters = "reverse,vreverse,areverse,ytp,datamosh,clonemosh,ricecake,shake,stutter,shuffle,lag,rlag,repeatuntil,crash".split(',')
+            removeFilters = "reverse,vreverse,areverse,ytp,datamosh,ricecake,shake,stutter,shuffle,lag,rlag,repeatuntil,crash".split(',')
             for i in removeFilters:
                 d[i] = None
     else:
@@ -727,26 +727,26 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
             th = str(n)
             SOXCMD += ["compand", ".1,.2", f"-inf,{float(th)-0.1},-inf,{th},{th}", "0", "-100", ".1"]
             return AUDPRE
-        def bass     (SOXCMD, AUDPRE):
+        def bass(SOXCMD, AUDPRE):
             d['bass'] = translate(d['bass'] / 100, -1, 1, -1000, 1000, f = lambda x: sign(x)*(abs(x)/20 if abs(x) < 0.7 else ((abs(x)-0.2675)**4)))
             SOXCMD += ["bass", str(d['bass'])]
             return AUDPRE
-        def earrape  (SOXCMD, AUDPRE):
+        def earrape(SOXCMD, AUDPRE):
             d['earrape'] = constrain(d['earrape'], 0, 100) * 10
             SOXCMD += ["gain", str(d['earrape'])]
             return AUDPRE
-        def pitch    (SOXCMD, AUDPRE):
+        def pitch(SOXCMD, AUDPRE):
             d['pitch'] = 12 * int(constrain(d['pitch'], -100, 100))
             SOXCMD += ["pitch", str(d['pitch'])]
             return AUDPRE
-        def reverb   (SOXCMD, AUDPRE):
+        def reverb(SOXCMD, AUDPRE):
             d['reverb'] = 25 + constrain(d['reverb'], 0, 100) * (3 / 4 - 0.01)
             rvb, rbd = str(d['reverb']), '0'
             if d['reverbdelay'] is not None:
                 rbd = str(5 * constrain(float(d['reverbdelay']), 0, 99.9))
             SOXCMD += ["reverb", rvb, rvb, rvb, rvb, rbd, str(d['reverb'] / 10)]
             return AUDPRE
-        def crush     (SOXCMD, AUDPRE):
+        def crush(SOXCMD, AUDPRE):
             if len(SOXCMD) > 0:
                 exportSox(AUDPRE, "PRE_CRUSH")
                 AUDPRE = "PRE_CRUSH"
@@ -758,7 +758,7 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
                 ASN += ASI[n1 * (i >> d['crush'])] * n1
             ASN.export(f"{pat}/CRUSH{e0}.wav", format = "wav")
             return "CRUSH"
-        def wobble    (SOXCMD, AUDPRE):
+        def wobble(SOXCMD, AUDPRE):
             if len(SOXCMD) > 0:
                 exportSox(AUDPRE, "PRE_WOB")
                 AUDPRE = "PRE_WOB"
@@ -834,7 +834,7 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
     remove(newName)
     rename(f"{pat}/_{e0}.mp4", newName)
 
-    customFilters = ['shuffle', 'stutter', 'ytp', 'datamosh', 'ricecake', 'clonemosh', 'glitch']
+    customFilters = ['shuffle', 'stutter', 'ytp', 'datamosh', 'ricecake', 'glitch']
     customFilters = sorted(filter(lambda x: notNone(d[x]), customFilters), key=getOrder)
 
     def FXshuffle():
@@ -867,13 +867,6 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
         nonlocal newName, hasAudio, DURATION, d
         d['ricecake'] = constrain(d['ricecake'], 0, 100)
         ricecake(newName, newName, 0.08 * (d['ricecake'] / 100), d['ricecake'] / 5, speed = False)
-    def FXclonemosh():
-        nonlocal hasAudio, DURATION, d, e
-        d['clonemosh'] = max(1, int(constrain(int(d['clonemosh']), 1, 100) / 10))
-        cloneMoshArgs = ["ruby", f"{parentPath}/clonemosh.rb", f"{pat}/{e0}", str(d['clonemosh'])]
-        if notNone(d['datamosh']):
-            cloneMoshArgs.append("1")
-        silent_run(cloneMoshArgs, timeout = 600)
 
     customFilterBind = {
         'shuffle': FXshuffle,
@@ -881,7 +874,6 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
         'ytp': FXytp,
         'datamosh': FXdatamosh,
         'ricecake': FXricecake,
-        'clonemosh': FXclonemosh,
         'glitch': FXglitch
     }
     timer()
@@ -997,7 +989,6 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         "stutter"       :[S, int(r(0, 25))       , "st"],
         "ytp"           :[V, int(r(1, 2))        , "ytp"],
         "fisheye"       :[V, int(r(1, 2))        , "fe"],
-        "clonemosh"     :[V, None                , "cm"],
         "mute"          :[V, None                , "mt"],
         "pitch"         :[V, int(r(-100, 100))   , "pch"],
         "reverb"        :[V, int(r(0, 100))      , "rv"],

@@ -5,9 +5,8 @@ These are commands that the bot supports.
 
 A command is declared as `filtername=value`. For example, to add 100 bass boost, use `bass=100`.
 
-To chain multiple commands, use a comma `,` to separate them. For example, bass boost + hypercam would be `bass=100, hypercam`.
-
-You can also use pipes `|` to separate groups of commands to be processed. For example, `ytp=100|hcycle=3`.
+To use multiple commands, use a comma `,` to separate them. For example, bass boost + hypercam would be `bass=100, hypercam`.
+(You can also use pipes `|` to separate groups of commands to be processed. For example, `ytp=100|hcycle=3` is like running ytp=100 and running hcycle=3 on the output video).
 
 To use the bot on Discord, prefix your command with "destroy". An empty command or "random" selects random parameters.
 

@@ -1,9 +1,9 @@
 import sys, time, socket, threading, subprocess
 from getSens import getSens
 
+#Removing the dumb logging thing for now, this file doesn't do what it was made to do it just runs stuff in a loop
 
-RESTART_DELAY_TIME = 1
-
+RESTART_DELAY_TIME = 2
 
 HOST, PORT = getSens("log_ip")[0], 8080 #IP and port you want to send logs to
 process, ID = sys.argv[1], sys.argv[2]
@@ -29,7 +29,7 @@ def tryConn():
     except Exception as e:
         return False
 
-tryConn()
+# tryConn()
 
 def sendMsg(msg):
     global canCom, s
@@ -57,9 +57,9 @@ while 1:
     while proc.poll() is None:
         out = proc.stdout.readline().strip()
         print(out)
-        if out != "":
-            send((ID + '～' + prefix + out).encode('utf-8'))
-    s.close()
+        # if out != "":
+        #     send((ID + '～' + prefix + out).encode('utf-8'))
+    # s.close()
     try: proc.kill()
     except: pass
     print("[SocketWrap] Process ended. Resarting.")

@@ -17,8 +17,8 @@ DIRECTORY = f"{getSens('dir')[0]}/@"
 BASE_URL = f"{getSens('website')[0]}/@"
 DISPLAY_MESSAGES = False
 MSG_DISPLAY_LEN = 75
-TAGLINE = 'https://discord.gg/aFrEBEN'
-CHECK_PATREON = True
+TAGLINE = 'https://discord.com/invite/aFrEBEN'
+CHECK_PATREON = False #TODO: fix this
 IP_ADDR, PORT = "0.0.0.0", 6444
 VERBOSE_OUTPUT = False
 
@@ -47,9 +47,9 @@ def formatKey(l):
     return l.split('=')[1].strip().replace('"', '')
 
 priorityList = [
-    {'name': 'newserver', 'chance': 25},
-    {'name': 'johnny5', 'chance': 25},
-    {'name': 'ganerserver', 'chance': 35}, 
+    {'name': 'ganerserver', 'chance': 100},
+    # {'name': 'johnny5', 'chance': 25},
+    # {'name': 'ganerserver', 'chance': 35}, 
 ]
 
 clients = {}
@@ -142,7 +142,10 @@ def setLength(txt, l):
 timedGuilds = []
 timedUsers = []
 
-bot = discord.AutoShardedClient(status = discord.Game(name = TAGLINE))
+intents = discord.Intents.default()
+#intents.members = True
+intents.messages = True #The fact that this is now a """privilaged""" intent is retarded, Discord is literally going against their dev community in doing this shows the starting of the fall of their platform
+bot = discord.AutoShardedClient(status = discord.Game(name = TAGLINE), intents = intents)
 botIsReady = False
 
 #Why the hell does this use a database? It's pointless
@@ -172,29 +175,36 @@ async def updateSubscriptionList():
         if srv:
             clearSubscribers()
             tierAmounts = [0 for i in range(len(patreonTierRoles))]
-            if CHECK_PATREON:
-                async for member in srv.fetch_members(limit = 1000000):
-                    roles = [i.id for i in member.roles]
-                    for i, v in enumerate(patreonTierRoles):
-                        if v in roles:
-                            addSubscriber(member.id, i + 1)
-                            tierAmounts[i] += 1
-                            break
-                if not botIsReady:
-                    for i, v in enumerate(tierAmounts):
-                        print(f"Found {v} tier {i + 1} Patreon member(s).")
-            else:
-                if not botIsReady:
-                    print("Skipped Patreon tier checks.")
-
-            if not botIsReady:
+            try:
                 if CHECK_PATREON:
-                    print("Finished initial Patreon role check.")
+                    async for member in srv.fetch_members(limit = 1000000):
+                        roles = [i.id for i in member.roles]
+                        for i, v in enumerate(patreonTierRoles):
+                            if v in roles:
+                                addSubscriber(member.id, i + 1)
+                                tierAmounts[i] += 1
+                                break
+                    if not botIsReady:
+                        for i, v in enumerate(tierAmounts):
+                            print(f"Found {v} tier {i + 1} Patreon member(s).")
+                else:
+                    if not botIsReady:
+                        print("Skipped Patreon tier checks.")
+            except:
+                print("Couldn't get Patreon Discord server!")
+                if not botIsReady:
+                    botIsReady = True
+                    fixPrint("Discord bot started.")
+            if not botIsReady:
+                if CHECK_PATREON: print("Finished initial Patreon role check.")
                 print(f"Bot Guild count: {len(bot.guilds)}")
                 fixPrint("Discord bot started.")
                 botIsReady = True
         else:
-            print("Couldn't get Patreon Discord server.")
+            print("Couldn't get Patreon Discord server!")
+            if not botIsReady:
+                botIsReady = True
+                fixPrint("Discord bot started.")
         await asyncio.sleep(60 * 5)
 
 
@@ -237,10 +247,13 @@ async def tryTimedCommand(user, message):
 @bot.event
 async def on_ready():
     print("ON_READY() TRIGGERED")
-    if not botIsReady: await updateSubscriptionList()
+    if not botIsReady:
+        await bot.change_presence(activity = discord.Game(name = TAGLINE))
+        await updateSubscriptionList()
 
 @bot.event
 async def on_message(message):
+    # print(message)
     global VERBOSE_OUTPUT
 
     if not botIsReady: return
@@ -354,7 +367,7 @@ async def on_message(message):
             await post("File format unavailable.\nFile format list: webm, mp4, mov, gif, jpg/jpeg, png")
             return
 
-        choices = ["h", "Here ya go", "You can help support the bot and get extra perks through Patreon! (<https://www.patreon.com/videoeditbot>)", "Is this one as bad as the last one?", "هي لعبة الكترونية", "That moment when", "New punjabi movies 2014 full movie free download hd 1080p", "Yo mama moment"]
+        choices = ["your autism has arrived, sire", "h", "Here ya go", "You can help support the bot and get extra perks through Patreon! (<https://www.patreon.com/videoeditbot>)", "Is this one as bad as the last one?", "هي لعبة الكترونية", "That moment when", "New punjabi movies 2014 full movie free download hd 1080p", "Yo mama moment", "Help support the bot by donating some ETH! 0x013d1361177ab72b0cf096bd34fa671efb3eeeee"]
         if guildID == 463054124766986261: choices.append("your autism, madam")
 
         if user == bot.user:
@@ -378,7 +391,7 @@ async def on_message(message):
         if not result: await message.channel.send("Sorry, we couldn't find a server to edit this video. [likely the bot's being worked on atm]")
 
     if ltxt == "hat":
-        await message.channel.send(file = discord.File(f"{DIRECTORY}/../@files/hat.png"))
+        await message.channel.send(file = discord.File("hat.png"))
         return
 
     if ltxt == "verbose_veb_on":

@@ -1,0 +1,5 @@
+psutil
+ffmpeg-python
+discord.py
+Pillow
+pydub

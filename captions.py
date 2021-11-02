@@ -109,17 +109,12 @@ def poster(width, height, cap = None, bottomcap = None):
         bottomcap = bottomcap.replace('^', '\n')
 
     MP = min(width, height)
-
     ol = round(MP / 125)
-
     newSize = (int(width + MP / 10 + ol * 2), 2 * height)
-
     img = Image.new('RGB', newSize, (0, 0, 0))
-
     canvas = ImageDraw.Draw(img)
-
     bb = height + MP / 20 + 2 * ol
-
+    
     canvas.rectangle([(1 + MP / 20, 1 + MP / 20), (width + MP / 20 + 2 * ol, bb + 1)], fill = "black", width = ol, outline = "white")
     
     bb += int(MP / 40)
