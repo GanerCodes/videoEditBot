@@ -68,7 +68,7 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `reverbdelay`   | `rvd`       | Number | 0    | 100          | Echo response time, 100 means it takes the longest for an echo to bounce back                       |
 | `crush`         | `cr`        | Number | 1    | 100          | Obliterates audio                                                                                   |
 | `earrape`       | `er`        | Number | 0    | 100          | Earrapes the video, by making the video very loud and distorted.                                    |
-| `music`         | `mus`       | Text   | -    | -            | Music is added using a YouTube video ID (the text after ?watch=). The song must be under 5 minutes. |
+| `music`         | `mus`       | -      | -    | -            | Music is added using a YouTube video ID (the text after ?watch=). The song must be under 5 minutes. |
 | `musicdelay`    | `musd`      | Number | 0    | End of video | Number of seconds corresponding to when the added music starts                                      |
 | `musicskip`     | `muss`      | Number | 0    | End of music | Starts the song at a given time of the song (in seconds)                                            |
 | `sfx`           | `sfx`       | Number | 1    | 100          | Adds random sound effects                                                                           |
@@ -81,3 +81,4 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `repeatuntil`   | `repu`      | Number | 1    | 45           | Repeats video until this time is reached                                                            |
 | `timecode`      | `timc`      | Number | 1    | 4            | Messes with the video's timecode metadata. Only applies to Discord bot.                             |
 | `crash`         | `crsh`      | -      | -    | -            | Makes the video crash when it concludes. Only applies to Discord bot.                               |
+| `swirl`         | `swl`       | Number | -100 | 100          | Twirl the video forward and backwards.
