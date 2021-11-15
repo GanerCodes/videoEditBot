@@ -1,7 +1,7 @@
 # Edits videos through Twitter and Discord.
 
 Requires:
- - Python 3.8+ (Libs = ffmpeg-python, pydub, discord, tweepy, pillow, colorama, requests, youtube_dl, aiohttp, asyncio)
+ - Python 3.8+ (Libs = ffmpeg-python, pydub, discord, tweepy, pillow, colorama, requests, yt-dlp, aiohttp, asyncio)
  - Ruby 2.7+ (Libs = aviglitch)
  - Ffmpeg 4.3+
  - Sox 14.4+
