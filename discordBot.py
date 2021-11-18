@@ -367,7 +367,7 @@ async def on_message(message):
             await post("File format unavailable.\nFile format list: webm, mp4, mov, gif, jpg/jpeg, png")
             return
 
-        choices = ["your autism has arrived, sire", "h", "Here ya go", "You can help support the bot and get extra perks through Patreon! (<https://www.patreon.com/videoeditbot>)", "Is this one as bad as the last one?", "هي لعبة الكترونية", "That moment when", "New punjabi movies 2014 full movie free download hd 1080p", "Yo mama moment", "Help support the bot by donating some ETH! 0x013d1361177ab72b0cf096bd34fa671efb3eeeee"]
+        choices = ["your autism has arrived, sire", "h", "Here ya go", "You can help support the bot and get extra perks through Patreon! (<https://www.patreon.com/videoeditbot>)", "Is this one as bad as the last one?", "هي لعبة الكترونية", "That moment when", "New punjabi movies 2014 full movie free download hd 1080p", "Yo mama moment", "Help support the bot by donating some ETH! 0x013d1361177ab72b0cf096bd34fa671efb3eeeee", "Access Denied"]
         if guildID == 463054124766986261: choices.append("your autism, madam")
 
         if user == bot.user:
