@@ -925,9 +925,9 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
             remove(newName)
             rename(f"{pat}/NEW_{e0}.mp4", newName)
 
-
-    if notNone(d['crash']) and not disallowTimecodeBreak:
-        videoCrasher(newName, f"{resourceDir}/append.mp4", newName)
+    # This got patched :<
+    # if notNone(d['crash']) and not disallowTimecodeBreak:
+        # videoCrasher(newName, f"{resourceDir}/append.mp4", newName)
     if notNone(d['timecode']) and not disallowTimecodeBreak:
         d['timecode'] = int(constrain(d['timecode'], 1, 4))
         timecodeBreak(newName, d['timecode'])

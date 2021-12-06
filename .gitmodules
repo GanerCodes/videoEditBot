@@ -1,0 +1,3 @@
+[submodule "editor/AutotuneBot"]
+	path = editor/AutotuneBot
+	url = https://github.com/GanerCodes/AutotuneBot
