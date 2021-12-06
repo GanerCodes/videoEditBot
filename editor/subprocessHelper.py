@@ -32,3 +32,6 @@ def getout(command, **kawrgs):
 def getout_r(command, **kawrgs):
     r = _run(command, text = True, stdout = PIPE, **kawrgs)
     return [r.returncode, r.stdout]
+
+
+silent_run = loud_run

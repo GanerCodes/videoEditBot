@@ -5,8 +5,9 @@ from collections import namedtuple
 from subprocess  import DEVNULL, STDOUT, check_call, getoutput, run
 from itertools   import repeat, chain
 from operator    import itemgetter
-from random      import randrange, uniform, shuffle as randshuffle
+from random      import randrange, uniform, shuffle as randshuffle, choice as randChoice
 from shutil      import copyfile, rmtree
+from string      import ascii_letters
 from pydub       import AudioSegment as AS
 from math        import ceil
 from PIL         import Image
@@ -21,6 +22,7 @@ from listHelper       import *
 from pathHelper       import *
 from addSounds        import addSounds
 from fixPrint         import fixPrint
+from datamosh         import datamosh
 from ricecake         import ricecake
 from captions         import normalcaption as capN, impact as capI, poster as capP, cap as capC
 from ytp              import ytp
@@ -189,7 +191,7 @@ def timecodeBreak(file, m):
     new = open(file, 'wb')
     new.write(byteData)
 
-def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
+def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
     videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'topcap', 'bottomcap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
 
@@ -197,7 +199,7 @@ def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp
     for i in groupData:
         d[i['name']] = i['value']
 
-    properFileName = file
+    originalFile = file
     currentPath = path.abspath('')
     pat = getDir(file)
     e0  = getName(file)
@@ -298,7 +300,6 @@ def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp
             silent_run(unwrap(removeNone(listReplace(tmpArgs, 1, filtText))))
         if ET:
             tmpArgs = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", f"{e[0]}{e[1]}", "-ss", str(ET), "-reset_timestamps", "1", "-break_non_keyframes", "1", "-max_muxing_queue_size", "1024", "-preset", "veryfast", 1, f"{pat}/END_{e0}.mp4"]
-            print("WHAT", tmpArgs, ET)
             silent_run(unwrap(removeNone(listReplace(tmpArgs, 1, filtText))))
 
 
@@ -481,30 +482,30 @@ def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp
 
         def toptext():
             nonlocal video, audio, width, height
-            capI(int(width), int(height), toptext = d['toptext'], bottomtext = d['bottomtext']).save(f"{pat}/impact{e0}.png")
+            capI(int(width), int(height), toptext = d['toptext'], bottomtext = d['bottomtext'], resourceDir = resourceDir).save(f"{pat}/impact{e0}.png")
             video = video.overlay(ffmpeg.input(f"{pat}/impact{e0}.png"))
 
         def topcaption():
             nonlocal video, audio, width, height
-            capP(int(width), int(height), cap = d['topcaption'], bottomcap = d['bottomcaption']).save(f"{pat}/poster{e0}.png")
+            capP(int(width), int(height), cap = d['topcaption'], bottomcap = d['bottomcaption'], resourceDir = resourceDir).save(f"{pat}/poster{e0}.png")
             ms = "main_w" if width < height else "main_h"
             video = ffmpeg.input(f"{pat}/poster{e0}.png").overlay(video, x = f"min(main_w,main_h)/20+0.5", y = f"min(main_w,main_h)/20+0.5")
             width, height = getSize(f"{pat}/poster{e0}.png")
 
         def normalcaption():
             nonlocal video, audio, width, height
-            capN(int(width), int(height), cap = d['normalcaption']).save(f"{pat}/normalcaption{e0}.png")
+            capN(int(width), int(height), cap = d['normalcaption'], resourceDir = resourceDir).save(f"{pat}/normalcaption{e0}.png")
             video = ffmpeg.input(f"{pat}/normalcaption{e0}.png").filter("pad", h = f"(ih+{height})+mod((ih+{height}), 2)").overlay(video, y = f"(main_h-{height})")
             height = str(int(height) + getImageRes(f"{pat}/normalcaption{e0}.png")[1])
             
         def cap():
             nonlocal video, audio, width, height
             if d['topcap']:
-                capC(int(width), int(height), cap = d['topcap']).save(f"{pat}/topcap{e0}.png")
+                capC(int(width), int(height), cap = d['topcap'], resourceDir = resourceDir).save(f"{pat}/topcap{e0}.png")
                 video = ffmpeg.input(f"{pat}/topcap{e0}.png").filter("pad",h = f"(ih+{height})+mod((ih+{height}), 2)").overlay(video, y = f"(main_h-{height})")
                 height = str(int(height) + getImageRes(f"{pat}/topcap{e0}.png")[1])
             if d['bottomcap']:
-                capC(int(width), int(height), cap = d['bottomcap']).save(f"{pat}/bottomcap{e0}.png")
+                capC(int(width), int(height), cap = d['bottomcap'], resourceDir = resourceDir).save(f"{pat}/bottomcap{e0}.png")
                 capHeight = getImageRes(f"{pat}/bottomcap{e0}.png")[1]
                 video = video.filter("pad", h = f"ih+{capHeight}+mod((ih+{capHeight}), 2)").overlay(ffmpeg.input(f"{pat}/bottomcap{e0}.png"), y = f"main_h-{capHeight}")
                 height = str(int(height) + capHeight)
@@ -852,17 +853,18 @@ def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp
         ytp(newName, int(d['ytp']), hasAudio)
     def FXdatamosh():
         nonlocal newName, d
-        d['datamosh'] = constrain(d['datamosh'], 3, 100)
-        if d['datamosh'] > 4:
-            kint = int(100 - d['datamosh'] / 1.25)
-            silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-x264-params", f"kint={kint}", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
-        else:
-            silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
-        remove(newName)
-        silent_run(["datamosh", "-o", f"{pat}/2_{e0}.avi", f"{pat}/1_{e0}.avi"], shell = True)
-        silent_run(["ffmpeg", "-hide_banner", "-loglevel", "fatal", "-i", f"{pat}/2_{e0}.avi", f"{pat}/3_{e0}.mp4"])
-        remove(f"{pat}/2_{e0}.avi")
-        rename(f"{pat}/3_{e0}.mp4", newName)
+        # d['datamosh'] = constrain(d['datamosh'], 3, 100)
+        # if d['datamosh'] > 4:
+        #     kint = int(100 - d['datamosh'] / 1.25)
+        #     silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-x264-params", f"kint={kint}", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
+        # else:
+        #     silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
+        # remove(newName)
+        # silent_run(["datamosh", "-o", f"{pat}/2_{e0}.avi", f"{pat}/1_{e0}.avi"], shell = True)
+        # silent_run(["ffmpeg", "-hide_banner", "-loglevel", "fatal", "-i", f"{pat}/2_{e0}.avi", f"{pat}/3_{e0}.mp4"])
+        # remove(f"{pat}/2_{e0}.avi")
+        # rename(f"{pat}/3_{e0}.mp4", newName)
+        datamosh(newName, f"{pat}/datamosh_{e0}.mp4", replace_input = True)
     def FXricecake():
         nonlocal newName, hasAudio, DURATION, d
         d['ricecake'] = constrain(d['ricecake'], 0, 100)
@@ -931,16 +933,16 @@ def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp
         timecodeBreak(newName, d['timecode'])
 
     if (isImage := (oldFormat in imageArray and not toVideo)):
-        properFileName = e[0] + ".png"
-        silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-i", newName, "-ss", "0", "-vframes", "1", properFileName])
+        originalFile = e[0] + ".png"
+        silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-i", newName, "-ss", "0", "-vframes", "1", originalFile])
         remove(newName)
         newExt = "png"
     else:
-        properFileName = e[0] + ".mp4"
+        originalFile = e[0] + ".mp4"
         newExt = "mp4"
     
     if toGif and not isImage:
-        properFileName = e[0] + ".gif"
+        originalFile = e[0] + ".gif"
         newExt = "gif"
         qui(
             ffmpeg.filter(
@@ -954,7 +956,7 @@ def edit(file, groupData, par, groupNumber = 0, resourceDir = "..", newExt = "mp
 
 V, S = float, str
 
-def videoEdit(properFileName, args, workingDir = "./", resourceDir = path.dirname(__file__), disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
+def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(__file__), disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
     oldArgs = args
     par = {
         "vbr"           :[V, round(r(0, 100))    , "vbr"],
@@ -1045,67 +1047,67 @@ def videoEdit(properFileName, args, workingDir = "./", resourceDir = path.dirnam
         else:
             return VEB_Result(False, "", "Random values are disabled.")
 
-    if durationUnder and getExt(properFileName) in ["mp4", "avi", "webm", "mov"]:
-        if not checkIfDurationIsUnderTime(properFileName, durationUnder):
+    if durationUnder and getExt(originalFile) in ["mp4", "avi", "webm", "mov"]:
+        if not checkIfDurationIsUnderTime(originalFile, durationUnder):
             return VEB_Result(False, "", "The video is longer than the processing limit.")
 
     fixPrint(f"Args{randomSel}: {strArgs(args)}")
 
-    success, newExt, newPath = False, None, None
+    UUID = ''.join(randChoice(ascii_letters) for i in range(10))
+    originalFileName = getName(originalFile)
+    originalFileExt  = getExt (originalFile)
+    newFileHead = f"{originalFileName}.{originalFileExt}" # Filename without path
+    newFileDir  = f"{workingDir}/{UUID}_{originalFileName}" # Video working directory
+    success = False
     try:
-        if not path.isdir(workingDir): makedirs(workingDir) # Create base working dir
-        if path.isdir(newPath := f"{workingDir}/{getName(properFileName)}"):
-            rmtree(newPath) # Delete video working dir if it exists
-        makedirs(newPath) # Create video working dir
-        newFileName = f"{getName(properFileName)}.{(newExt := getExt(properFileName))}" # Filename without path
-        rename(f"{properFileName}", f"{newPath}/{newFileName}") # Move video to new location
+        newFileExt = originalFileExt
+        makedirs(newFileDir) # Create video dir
+        copyfile(f"{originalFile}", f"{newFileDir}/{newFileHead}") # Move video to new location
         
         for i, group in enumerate(args):
-            oldFileName = chExt(newFileName, newExt)
-            newFileName = chName(oldFileName, f"{i}_{chExt(getName(properFileName), newExt)}")
-            rename(f"{newPath}/{oldFileName}", f"{newPath}/{newFileName}")
-            newExt = edit(
-                file = f"{newPath}/{newFileName}",
-                groupData = group, 
-                par = par,
-                resourceDir = resourceDir,
-                newExt = newExt,
-                groupNumber = i,
-                SHOWTIMER = SHOWTIMER,
+            oldFileName = chExt(newFileHead, newFileExt)
+            newFileHead = chName(oldFileName, f"{i}_{originalFileName}.{newFileExt}")
+            newFilePath = f"{newFileDir}/{newFileHead}"
+            rename(f"{newFileDir}/{oldFileName}", newFilePath)
+            newFileExt = edit(
+                file            = newFilePath,
+                groupData       = group, 
+                par             = par,
+                workingDir      = workingDir,
+                resourceDir     = resourceDir,
+                newExt          = newFileExt,
+                groupNumber     = i,
+                SHOWTIMER       = SHOWTIMER,
                 HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT,
                 HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG,
-                disallowTimecodeBreak = disallowTimecodeBreak,
-                fixPrint = fixPrint,
+                fixPrint        = fixPrint,
                 **kwargs
             )
         
-        rename(f"{newPath}/{chExt(newFileName, newExt)}", finalName := f"{resourceDir}/{chExt(properFileName, newExt)}")
-        removeGarbage(f"{newPath}", keepExtraFiles)
-        success = True
+        finalName = f"{workingDir}/{UUID}_{chExt(originalFile, newFileExt)}"
+        
+        rename(f"{newFileDir}/{chExt(newFileHead , newFileExt)}", finalName)
+        removeGarbage(newFileDir, keepExtraFiles)
+        
+        return VEB_Result(True, finalName, "")
     except Exception as ex:
         fixPrint("Error! Args were:", strArgs(args))
         printEx(ex)
-        success = False
 
-    if success and path.isFile(finalName):
-        return VEB_Result(True, finalName, "")
-    else:
-        fixPrint("Editor ran into an error.")
-
-        tryToDeleteFile(properFileName)
-        removeGarbage(f"{newPath}", keepExtraFiles)
+        # tryToDeleteFile(originalFile)
+        # removeGarbage(f"{newFileDir}", keepExtraFiles)
         return VEB_Result(False, "", "An unknown error has occured!")
 
 # if __name__ == "__main__":
 #     if len(sys.argv) == 1:
 #         args = ""
-#         properFileName = "input.mp4"
+#         originalFile = "input.mp4"
 #     elif len(sys.argv) > 2:
 #         args = sys.argv[1]
-#         properFileName = sys.argv[2]
-#     if not path.isfile(properFileName):
+#         originalFile = sys.argv[2]
+#     if not path.isfile(originalFile):
 #         fixPrint("Error! Cannot find input file.")
 #         sys.exit(1)
 
-#     v = videoEdit(properFileName, args)
+#     v = videoEdit(originalFile, args)
 #     sys.exit(v[0])

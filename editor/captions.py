@@ -13,20 +13,20 @@ def drawTextWithOutline(canvas, text, x, y, out, font, outline = True, inColor =
     canvas.text((int(x), int(y)), text, inColor, font = font, embedded_color = True, **kwargs)
     return
 
-def drawText(img, text, pos, leftAlign = False, mode = "impact", **kwargs):
+def drawText(img, text, pos, leftAlign = False, mode = "impact", resourceDir = ".", **kwargs):
     canvas = ImageDraw.Draw(img)
     if mode == "impact":
         FS = int((img.width / 6) / (1 + (min(4, len(text) / 58))))
-        font = ImageFont.truetype("fonts/impact_emoji.ttf", FS)
+        font = ImageFont.truetype(f"{resourceDir}/fonts/impact_emoji.ttf", FS)
     elif mode == "cap":
         FS = int((img.width / (6 + (len(text) / 10))))
-        font = ImageFont.truetype("fonts/cap_emoji.ttf", FS)
+        font = ImageFont.truetype(f"{resourceDir}/fonts/cap_emoji.ttf", FS)
         kwargs['outline'] = False
         kwargs['inColor'] = (0, 0, 0)
     elif mode == "normalcap":
         FS = int(img.width / 15)
         #font = ImageFont.truetype("arialbd.ttf", FS)
-        font = ImageFont.truetype("fonts/seguiemj.ttf", FS)
+        font = ImageFont.truetype(f"{resourceDir}/fonts/seguiemj.ttf", FS)
         kwargs['outline'] = False
         kwargs['inColor'] = (0, 0, 0)
     else:
@@ -78,13 +78,13 @@ def pad(i, xPad, yPad, xOff = None, yOff = None, colorMode = "RGB", color = (0, 
     new_im.paste(i, marg)
     return new_im
 
-def normalcaption(width, height, cap = None):
+def normalcaption(width, height, cap = None, resourceDir = "."):
     img = Image.new('RGB', (width, height * 2), (255, 255, 255))
-    drawText(img, cap, "top", mode = "normalcap", leftAlign = True)
+    drawText(img, cap, "top", mode = "normalcap", leftAlign = True, resourceDir = resourceDir)
     img = pad(crop:=pad(cropWhite(img), int(width / 60), int(height / 60), color = (255, 255, 255)), int((width - crop.size[0]) / 2), 0, xOff = 0, color = (255, 255, 255))
     return fixSize(img)
 
-def impact(width, height, toptext = None, bottomtext = None):
+def impact(width, height, toptext = None, bottomtext = None, resourceDir = "."):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     if toptext:    
         invArgs = {}
@@ -92,17 +92,17 @@ def impact(width, height, toptext = None, bottomtext = None):
             invArgs['inColor' ] = (0, 0, 0)
             invArgs['outColor'] = (255, 255, 255)
             toptext = toptext[1:]
-        drawText(img, toptext   , "top", **invArgs)
+        drawText(img, toptext   , "top", resourceDir = resourceDir, **invArgs)
     if bottomtext:
         invArgs = {}
         if bottomtext.startswith('^'):
             invArgs['inColor' ] = (0, 0, 0)
             invArgs['outColor'] = (255, 255, 255)
             bottomtext = bottomtext[1:]
-        drawText(img, bottomtext, "bottom", **invArgs)
+        drawText(img, bottomtext, "bottom", resourceDir = resourceDir, **invArgs)
     return img
 
-def poster(width, height, cap = None, bottomcap = None):
+def poster(width, height, cap = None, bottomcap = None, resourceDir = "."):
     if cap:
         cap = cap.replace('^', '\n')
     if bottomcap:
@@ -121,7 +121,7 @@ def poster(width, height, cap = None, bottomcap = None):
 
     bottom = None
 
-    fName = "fonts/times_emoji.ttf"
+    fName = f"{resourceDir}/fonts/times_emoji.ttf"
     if cap:
         font = ImageFont.truetype(fName, int(MP / 10))
         w, h = canvas.textsize(cap, font = font)
@@ -138,9 +138,9 @@ def poster(width, height, cap = None, bottomcap = None):
 
     return fixSize(img)
 
-def cap(width, height, cap = None):
+def cap(width, height, cap = None, resourceDir = "."):
     img = Image.new('RGB', (width, height * 2), (255, 255, 255, 255))
-    drawText(img, cap, "top", mode = "cap")
+    drawText(img, cap, "top", mode = "cap", resourceDir = resourceDir)
     crop = cropWhite(img)
     cropSize = crop.size
     img = pad(crop, int((width - cropSize[0]) / 2), int(0.1 * height), color = (255, 255, 255))
