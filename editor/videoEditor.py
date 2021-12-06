@@ -1,5 +1,5 @@
 from time import time
-start_time = time()
+# start_time = time()
 import sys, ffmpeg
 
 from subprocess import DEVNULL, STDOUT, check_call, getoutput, run
@@ -10,7 +10,7 @@ from shutil     import copyfile, rmtree
 from pydub      import AudioSegment as AS
 from math       import ceil
 from PIL        import Image
-from os         import listdir, system, rename, remove, path, mkdir, makedirs, chdir
+from os         import listdir, system, rename, remove, path, mkdir, makedirs
 from re         import sub as re_sub
 
 from subprocessHelper import *
@@ -954,7 +954,7 @@ def edit(file, groupData, par, groupNumber = 0, parentPath = "..", newExt = "mp4
 
 V, S = float, str
 
-def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
+def videoEdit(properFileName, args, workingDir = "./", disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
     oldArgs = args
     par = {
         "vbr"           :[V, round(r(0, 100))    , "vbr"],
@@ -1056,12 +1056,10 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
     newPath = None
     backupFile, backupFileName = None, None
     try:
-        if not path.isdir(f"{parentPath}/active"): 
-            makedirs(f"{parentPath}/active")
-        newPath = f"{parentPath}/active/{getName(properFileName)}"
-        if path.isdir(newPath):
-            rmtree(newPath)
+        if not path.isdir(workingDir): makedirs(workingDir) # Create base working dir
+        if path.isdir(newPath := f"{workingDir}/{getName(properFileName)}"): rmtree(newPath) # Create video working dir
         makedirs(newPath)
+        
         newFileName = f"{getName(properFileName)}.{getExt(properFileName)}"
         rename(f"{properFileName}", f"{newPath}/{newFileName}")
         if logErrors:
@@ -1076,7 +1074,6 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
             rename(f"{newPath}/{oldFileName}", f"{newPath}/{newFileName}")
             newExt = edit(f"{newPath}/{newFileName}", group, par, newExt = newExt, groupNumber = i, SHOWTIMER = SHOWTIMER, HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT, HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG, disallowTimecodeBreak = disallowTimecodeBreak, parentPath = parentPath, fixPrint = fixPrint, **kwargs)
         
-        #chdir(parentPath) #NOTE (I have this note here from a long time ago idk what it's talking about ill leave it just in case)
         rename(f"{newPath}/{chExt(newFileName, newExt)}", finalName := f"{parentPath}/{chExt(properFileName, newExt)}")
         removeGarbage(f"{newPath}", keepExtraFiles)
         success = True
@@ -1085,10 +1082,8 @@ def videoEdit(properFileName, args, disallowTimecodeBreak = False, keepExtraFile
         printEx(ex)
         success = False
 
-    if SHOWTIMER:
-        print(f"Editing time: {time() - start_time}")
-
-    chdir(parentPath)
+    # if SHOWTIMER:
+        # print(f"Editing time: {time() - start_time}")
 
     if success:
         return [0, finalName]
