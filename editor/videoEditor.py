@@ -21,6 +21,7 @@ from download         import download
 from listHelper       import *
 from pathHelper       import *
 from addSounds        import addSounds
+from autotune         import autotuneURL
 from fixPrint         import fixPrint
 from datamosh         import datamosh
 from ricecake         import ricecake
@@ -193,7 +194,7 @@ def timecodeBreak(file, m):
 
 def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
     videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'topcap', 'bottomcap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
-    audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume']
+    audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume', 'autotune']
 
     d = {i: None for i in par}
     for i in groupData:
@@ -779,6 +780,11 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
             except Exception as ex:
                 fixPrint("music error.", ex)
                 return AUDPRE
+        def autotune(SOXCMD, AUDPRE):
+            try:
+                autotuneURL(f"{pat}/{AUDPRE}{e0}.wav", d['autotune'], replaceOriginal = True)
+            except Exception as ex:
+                fixPrint("autotune error.", ex)
         def sfx(SOXCMD, AUDPRE):
             if len(SOXCMD) > 0:
                 exportSox(AUDPRE, "SFX")
@@ -959,76 +965,77 @@ V, S = float, str
 def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(__file__), disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
     oldArgs = args
     par = {
-        "vbr"           :[V, round(r(0, 100))    , "vbr"],
-        "abr"           :[V, round(r(0, 100))    , "abr"],
-        "earrape"       :[V, round(r(0, 100))    , "er"],
-        "deepfry"       :[V, round(r(0, 100))    , "df"],
-        "contrast"      :[V, round(r(0, 100))    , "ct"],
-        "speed"         :[V, r(-4, 4)            , "sp"],
-        "timecode"      :[V, None                , "timc"],
-        "crash"         :[V, None                , "crsh"],
-        "bass"          :[V, round(r(0, 100))    , "bs"],
-        "shuffle"       :[V, None                , "sh"],
-        "toptext"       :[S, str(r(0, 100))      , "tt"],
-        "bottomtext"    :[S, str(r(0, 100))      , "bt"],
-        "wscale"        :[S, int(r(-500, 500))   , "ws"],
-        "hscale"        :[S, int(r(-500, 500))   , "hs"],
-        "topcaption"    :[S, str(r(0, 100))      , "tc"],
-        "bottomcaption" :[S, str(r(0, 100))      , "bc"],
-        "threshold"     :[V, None                , "thh"],
-        "hue"           :[V, round(r(0, 100))    , "hue"],
-        "hcycle"        :[V, round(r(0, 100))    , "huec"],
-        "hypercam"      :[V, 1                   , "hypc"],
-        "bandicam"      :[V, 1                   , "bndc"],
-        "normalcaption" :[S, str(r(0, 100))      , "nc"],
-        "topcap"        :[S, str(r(0, 100))      , "cap"],
-        "bottomcap"     :[S, str(r(0, 100))      , "bcap"],
-        "reverse"       :[V, 1                   , "rev"],
-        "vreverse"      :[V, 1                   , "vrev"],
-        "areverse"      :[V, 1                   , "arev"],
-        "playreverse"   :[V, int(r(1, 3))        , "prev"],
-        "datamosh"      :[V, int(r(0, 100))      , "dm"],
-        "stutter"       :[S, int(r(0, 25))       , "st"],
-        "ytp"           :[V, int(r(1, 2))        , "ytp"],
-        "fisheye"       :[V, int(r(1, 2))        , "fe"],
-        "mute"          :[V, None                , "mt"],
-        "pitch"         :[V, int(r(-100, 100))   , "pch"],
-        "reverb"        :[V, int(r(0, 100))      , "rv"],
-        "reverbdelay"   :[V, int(r(0, 100))      , "rvd"],
-        "hmirror"       :[V, 1                   , "hm"],
-        "vmirror"       :[V, 1                   , "vm"],
-        "ricecake"      :[V, int(r(1, 25))       , "rc"],
-        "sfx"           :[V, int(r(1, 100))      , "sfx"],
-        "music"         :[S, None                , "mus"],
-        "musicskip"     :[V, None                , "muss"],
-        "musicdelay"    :[V, None                , "musd"],
-        "volume"        :[V, r(0.5, 3)           , "vol"],
-        "start"         :[V, None                , "s"],
-        "end"           :[V, None                , "e"],
-        "selection"     :[V, None                , "se"],
-        "holdframe"     :[V, None                , "hf"],
-        "delfirst"      :[V, None                , "delf"],
-        "dellast"       :[V, None                , "dell"],
-        "shake"         :[V, int(r(1, 100))      , "shk"],
-        "crush"         :[V, int(r(1, 100))      , "cr"],
-        "lag"           :[V, int(r(1, 100))      , "lag"],
-        "rlag"          :[V, int(r(1, 100))      , "rlag"],
-        "wobble"        :[V, int(r(1, 100))      , "wub"],
-        "zoom"          :[V, int(r(1, 5))        , "zm"],
-        "hcrop"         :[V, int(r(10, 90))      , "hcp"],
-        "vcrop"         :[V, int(r(10, 90))      , "vcp"],
-        "hflip"         :[V, 1                   , "hflp"],
-        "vflip"         :[V, 1                   , "vflp"],
-        "sharpen"       :[V, int(r(-100, 100))   , "shp"],
-        "watermark"     :[V, int(r(0, 100))      , "wtm"],
-        "framerate"     :[V, int(r(5, 20))       , "fps"],
-        "invert"        :[V, 1                   , "inv"],
-        "wave"          :[V, r(-100, 100)        , "wav"],
-        "waveamount"    :[V, r(0, 100)           , "wava"],
-        "wavestrength"  :[V, r(0, 100)           , "wavs"],
-        "repeatuntil"   :[V, None                , "repu"],
-        "acid"          :[V, r(1, 100)           , "acid"],
-        "glitch"        :[V, r(1, 100)           , "glch"]
+        "vbr"           :[V, "vbr" , round(r(0, 100)) ],
+        "abr"           :[V, "abr" , round(r(0, 100)) ],
+        "earrape"       :[V, "er"  , round(r(0, 100)) ],
+        "deepfry"       :[V, "df"  , round(r(0, 100)) ],
+        "contrast"      :[V, "ct"  , round(r(0, 100)) ],
+        "speed"         :[V, "sp"  , r(-4, 4) ],
+        "timecode"      :[V, "timc", None ],
+        "crash"         :[V, "crsh", None ],
+        "bass"          :[V, "bs"  , round(r(0, 100)) ],
+        "shuffle"       :[V, "sh"  , None ],
+        "toptext"       :[S, "tt"  , str(r(0, 100)) ],
+        "bottomtext"    :[S, "bt"  , str(r(0, 100)) ],
+        "wscale"        :[S, "ws"  , int(r(-500, 500)) ],
+        "hscale"        :[S, "hs"  , int(r(-500, 500)) ],
+        "topcaption"    :[S, "tc"  , str(r(0, 100)) ],
+        "bottomcaption" :[S, "bc"  , str(r(0, 100)) ],
+        "threshold"     :[V, "thh" , None ],
+        "hue"           :[V, "hue" , round(r(0, 100)) ],
+        "hcycle"        :[V, "huec", round(r(0, 100)) ],
+        "hypercam"      :[V, "hypc", 1 ],
+        "bandicam"      :[V, "bndc", 1 ],
+        "normalcaption" :[S, "nc"  , str(r(0, 100)) ],
+        "topcap"        :[S, "cap" , str(r(0, 100)) ],
+        "bottomcap"     :[S, "bcap", str(r(0, 100)) ],
+        "reverse"       :[V, "rev" , 1 ],
+        "vreverse"      :[V, "vrev", 1 ],
+        "areverse"      :[V, "arev", 1 ],
+        "playreverse"   :[V, "prev", int(r(1, 3)) ],
+        "datamosh"      :[V, "dm"  , int(r(0, 100)) ],
+        "stutter"       :[S, "st"  , int(r(0, 25)) ],
+        "ytp"           :[V, "ytp" , int(r(1, 2)) ],
+        "fisheye"       :[V, "fe"  , int(r(1, 2)) ],
+        "mute"          :[V, "mt"  , None ],
+        "pitch"         :[V, "pch" , int(r(-100, 100)) ],
+        "reverb"        :[V, "rv"  , int(r(0, 100)) ],
+        "reverbdelay"   :[V, "rvd" , int(r(0, 100)) ],
+        "hmirror"       :[V, "hm"  , 1 ],
+        "vmirror"       :[V, "vm"  , 1 ],
+        "ricecake"      :[V, "rc"  , int(r(1, 25)) ],
+        "sfx"           :[V, "sfx" , int(r(1, 100)) ],
+        "music"         :[S, "mus" , None ],
+        "musicskip"     :[V, "muss", None ],
+        "musicdelay"    :[V, "musd", None ],
+        "volume"        :[V, "vol" , r(0.5, 3) ],
+        "start"         :[V, "s"   , None ],
+        "end"           :[V, "e"   , None ],
+        "selection"     :[V, "se"  , None ],
+        "holdframe"     :[V, "hf"  , None ],
+        "delfirst"      :[V, "delf", None ],
+        "dellast"       :[V, "dell", None ],
+        "shake"         :[V, "shk" , int(r(1, 100)) ],
+        "crush"         :[V, "cr"  , int(r(1, 100)) ],
+        "lag"           :[V, "lag" , int(r(1, 100)) ],
+        "rlag"          :[V, "rlag", int(r(1, 100)) ],
+        "wobble"        :[V, "wub" , int(r(1, 100)) ],
+        "zoom"          :[V, "zm"  , int(r(1, 5)) ],
+        "hcrop"         :[V, "hcp" , int(r(10, 90)) ],
+        "vcrop"         :[V, "vcp" , int(r(10, 90)) ],
+        "hflip"         :[V, "hflp", 1 ],
+        "vflip"         :[V, "vflp", 1 ],
+        "sharpen"       :[V, "shp" , int(r(-100, 100)) ],
+        "watermark"     :[V, "wtm" , int(r(0, 100)) ],
+        "framerate"     :[V, "fps" , int(r(5, 20)) ],
+        "invert"        :[V, "inv" , 1 ],
+        "wave"          :[V, "wav" , r(-100, 100) ],
+        "waveamount"    :[V, "wava", r(0, 100) ],
+        "wavestrength"  :[V, "wavs", r(0, 100) ],
+        "repeatuntil"   :[V, "repu", None ],
+        "acid"          :[V, "acid", r(1, 100) ],
+        "glitch"        :[V, "glch", r(1, 100) ]
+        "autotune"      :[S, "atb" , "https://www.youtube.com/watch?v=65bNd-PnC64" ],
     }
 
     kwargs = {}
