@@ -1,3 +1,3 @@
 from editor import editor
 
-editor("hi", "")
+editor("hi", "cap test", workingDir = "active")
