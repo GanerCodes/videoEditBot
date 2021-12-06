@@ -17,11 +17,11 @@ from re          import sub as re_sub
 from subprocessHelper import *
 from betterStutter    import stutterInputProcess
 from videoCrasher     import videoCrasher
+from AutotuneBot      import autotuneURL
 from download         import download
 from listHelper       import *
 from pathHelper       import *
 from addSounds        import addSounds
-from autotune         import autotuneURL
 from fixPrint         import fixPrint
 from datamosh         import datamosh
 from ricecake         import ricecake
@@ -782,9 +782,15 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
                 return AUDPRE
         def autotune(SOXCMD, AUDPRE):
             try:
-                autotuneURL(f"{pat}/{AUDPRE}{e0}.wav", d['autotune'], replaceOriginal = True)
+                if len(SOXCMD) > 0:
+                    exportSox(AUDPRE, "PRE_AUTOTUNE")
+                    AUDPRE = "PRE_AUTOTUNE"
+                autotuneURL(f"{pat}/{AUDPRE}{e0}.wav", d['autotune'], replaceOriginal = True, video = False, executableName = f"{resourceDir}/AutotuneBot/autotune.exe")
             except Exception as ex:
                 fixPrint("autotune error.", ex)
+                raise ex
+                
+            return AUDPRE
         def sfx(SOXCMD, AUDPRE):
             if len(SOXCMD) > 0:
                 exportSox(AUDPRE, "SFX")
@@ -801,6 +807,7 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
             'reverb'   : reverb,
             'crush'    : crush,
             'wobble'   : wobble,
+            'autotune' : autotune,
             'music'    : music,
             'sfx'      : sfx,
             'mute'     : mute
@@ -1034,9 +1041,11 @@ def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(
         "wavestrength"  :[V, "wavs", r(0, 100) ],
         "repeatuntil"   :[V, "repu", None ],
         "acid"          :[V, "acid", r(1, 100) ],
-        "glitch"        :[V, "glch", r(1, 100) ]
-        "autotune"      :[S, "atb" , "https://www.youtube.com/watch?v=65bNd-PnC64" ],
+        "glitch"        :[V, "glch", r(1, 100) ],
+        "autotune"      :[S, "atb" , "https://www.youtube.com/watch?v=65bNd-PnC64" ]
     }
+
+    for i, v in par.items(): v[1], v[2] = v[2], v[1] # Dumb ik but it's too much effort otherwise
 
     kwargs = {}
     if 'tovid' in args.lower():

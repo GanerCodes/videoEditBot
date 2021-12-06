@@ -1,6 +1,8 @@
 import os, json, discord
 from editor import editor
 
+editor("hi.mp4", "pitch 25, autotune, vol 2, sfx", "./active")
+
 config = json.load(open("config.json", 'r'))
 
 intents = discord.Intents.default()
@@ -17,4 +19,4 @@ async def on_ready():
         await bot.change_presence(activity = discord_status)
         print("Bot ready!")
 
-bot.start(config["discordToken"])
+# bot.start(config["discordToken"])
