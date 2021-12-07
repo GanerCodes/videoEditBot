@@ -29,7 +29,7 @@ from captions         import normalcaption as capN, impact as capI, poster as ca
 from ytp              import ytp
 
 DELIMITERS = "= :;"
-VEB_Result = namedtuple("VEB_Result", ["success", "filename", "message"])
+result = namedtuple("result", ["success", "filename", "message"])
 
 def sign(x):
     return -1 if x < 0 else 1
@@ -102,11 +102,6 @@ def lim(x, y, m):
 
 def fv(x):
     return 2 * (int(x) >> 1)
-
-def removeGarbage(path, keepExtraFiles):
-    if keepExtraFiles:
-        return
-    tryToDeleteDir(path)
 
 def forceNumber(n):
     n = re_sub(r'[^0-9.-]', '', n)
@@ -192,7 +187,7 @@ def timecodeBreak(file, m):
     new = open(file, 'wb')
     new.write(byteData)
 
-def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "..", newExt = "mp4", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOWTIMER = False, fixPrint = fixPrint):
+def edit(file, groupData, par, workingDir = "", resourceDir = "..", toVideo = False, toGif = False, disallowTimecodeBreak = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, SHOW_TIMER = False, fixPrint = fixPrint):
     videoFX = ['playreverse', 'hmirror', 'vmirror', 'lag', 'rlag', 'shake', 'fisheye', 'zoom', 'bottomtext', 'toptext', 'normalcaption', 'topcap', 'bottomcap', 'topcaption', 'bottomcaption', 'hypercam', 'bandicam', 'deepfry', 'contrast', 'hue', 'hcycle', 'speed', 'vreverse', 'areverse', 'reverse', 'wscale', 'hscale', 'sharpen', 'watermark', 'framerate', 'invert', 'wave', 'waveamount', 'wavestrength', 'acid', 'hcrop', 'vcrop', 'hflip', 'vflip']
     audioFX = ['pitch', 'reverb', 'earrape', 'bass', 'mute', 'threshold', 'crush', 'wobble', 'music', 'sfx', 'volume', 'autotune']
 
@@ -209,8 +204,7 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
     resetTime = True
     ctt = 0
     def timer(msg = 'Duration'):
-        if not SHOWTIMER:
-            return
+        if not SHOW_TIMER: return
         if resetTime:
             ctt = time()
             resetTime = not resetTime
@@ -941,10 +935,12 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
     # This got patched :<
     # if notNone(d['crash']) and not disallowTimecodeBreak:
         # videoCrasher(newName, f"{resourceDir}/append.mp4", newName)
+        
     if notNone(d['timecode']) and not disallowTimecodeBreak:
         d['timecode'] = int(constrain(d['timecode'], 1, 4))
         timecodeBreak(newName, d['timecode'])
 
+    newExt = "mp4"
     if (isImage := (oldFormat in imageArray and not toVideo)):
         originalFile = e[0] + ".png"
         silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "fatal", "-i", newName, "-ss", "0", "-vframes", "1", originalFile])
@@ -965,11 +961,11 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
         ).run()
         remove(newName)
 
-    return newExt
+    return originalFile
 
 V, S = float, str
 
-def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(__file__), keep_original_file = True, disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
+def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(__file__), disallowTimecodeBreak = False, keepExtraFiles = False, SHOW_TIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
     oldArgs = args
     par = {
         "vbr"           :[V, "vbr" , round(r(0, 100)) ],
@@ -1061,59 +1057,65 @@ def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(
             args = [[{'name': v, 'value': (float(par[v][1]) if par[v][0] == V else str(par[v][1])), 'order': i} for i, v in enumerate(par) if (notNone(par[v][1]) and r(0, 7) < 0.4)]]
             randomSel = " (Randomly selected)"
         else:
-            return VEB_Result(False, "", "Random values are disabled.")
+            return result(False, "", "Random values are disabled.")
 
     if durationUnder and getExt(originalFile) in ["mp4", "avi", "webm", "mov"]:
         if not checkIfDurationIsUnderTime(originalFile, durationUnder):
-            return VEB_Result(False, "", "The video is longer than the processing limit.")
+            return result(False, "", "The video is longer than the processing limit.")
 
     fixPrint(f"Args{randomSel}: {strArgs(args)}")
 
     UUID = ''.join(randChoice(ascii_letters) for i in range(10))
     originalFileName = getName(originalFile)
     originalFileExt  = getExt (originalFile)
-    newFileHead = f"{originalFileName}.{originalFileExt}" # Filename without path
-    newFileDir  = f"{workingDir}/{UUID}_{originalFileName}" # Video working directory
+    newFileDir       = f"{workingDir}/{UUID}_{originalFileName}" # Video working directory
+    newFileHead      = f"{originalFileName}.{originalFileExt}"   # Filename without path
+    currentFilePath  = f"{newFileDir}/{newFileHead}"             # File name after inital move
     success = False
     try:
-        newFileExt = originalFileExt
         makedirs(newFileDir) # Create video dir
-        file_manipulation = copyfile if keep_original_file else rename
-        file_manipulation(f"{originalFile}", f"{newFileDir}/{newFileHead}") # Move video to new location
         
-        for i, group in enumerate(args):
-            oldFileName = chExt(newFileHead, newFileExt)
-            newFileHead = chName(oldFileName, f"{i}_{originalFileName}.{newFileExt}")
-            newFilePath = f"{newFileDir}/{newFileHead}"
-            rename(f"{newFileDir}/{oldFileName}", newFilePath)
-            newFileExt = edit(
+        file_manipulation = copyfile if keepExtraFiles else rename
+        file_manipulation(originalFile, currentFilePath) # Move video to new location
+        
+        i = 0
+        while True:
+            newFilePath = f"{getDir(currentFilePath)}/{i}_{getName(currentFilePath)}.{getExt(currentFilePath)}"
+            rename(currentFilePath, newFilePath)
+            
+            if i == len(args):
+                currentFilePath = newFilePath
+                break
+            
+            currentFilePath = edit(
                 file            = newFilePath,
-                groupData       = group, 
+                groupData       = args[i], 
                 par             = par,
                 workingDir      = workingDir,
                 resourceDir     = resourceDir,
-                newExt          = newFileExt,
-                groupNumber     = i,
-                SHOWTIMER       = SHOWTIMER,
+                SHOW_TIMER      = SHOW_TIMER,
                 HIDE_FFMPEG_OUT = HIDE_FFMPEG_OUT,
                 HIDE_ALL_FFMPEG = HIDE_ALL_FFMPEG,
                 fixPrint        = fixPrint,
                 **kwargs
             )
+            i += 1
         
-        finalName = f"{workingDir}/{UUID}_{chExt(originalFile, newFileExt)}"
+        final_name = f"{workingDir}/{getName(currentFilePath)}.{getExt(currentFilePath)}"
+        rename(currentFilePath, final_name)
         
-        rename(f"{newFileDir}/{chExt(newFileHead , newFileExt)}", finalName)
-        removeGarbage(newFileDir, keepExtraFiles)
+        if not keepExtraFiles: tryToDeleteDir(newFileDir)
         
-        return VEB_Result(True, finalName, "")
+        return result(True, final_name, "")
     except Exception as ex:
         fixPrint("Error! Args were:", strArgs(args))
         printEx(ex)
 
-        # tryToDeleteFile(originalFile)
-        # removeGarbage(f"{newFileDir}", keepExtraFiles)
-        return VEB_Result(False, "", "An unknown error has occured!")
+        if not keepExtraFiles:
+            tryToDeleteFile(originalFile)
+            tryToDeleteDir(newFileDir)
+            
+        return result(False, "", "An unknown error has occured!")
 
 # if __name__ == "__main__":
 #     if len(sys.argv) == 1:
