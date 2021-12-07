@@ -9,8 +9,9 @@ message_search_count = int(config["message_search_count"])
 working_directory = os.path.realpath(config["working_directory"])
 discord_tagline = config["discordTagline"]
 discord_token = config["discordToken"]
+meta_prefixes = config["meta_prefixes"]
 
-valid_extensions = ["mp4", "webm", "avi", "mov", "png", "gif", "jpg", "jpeg"]
+valid_extensions = ["mp4", "webm", "avi", "mkv", "mov", "png", "gif", "jpg", "jpeg"]
 
 
 if not os.path.isdir(working_directory): os.makedirs(working_directory)
@@ -108,43 +109,55 @@ async def prepare_VideoEdit(msg, arg):
         await msg.channel.send("Unable to find a message to edit, maybe upload a video and try again?")
         return
     
-    file_ext = os.path.splitext(targets[0].filename)[1]
-    # verify if valid extension
+    file_ext = os.path.splitext(targets[0].filename)[1][1:]
+    if file_ext not in valid_extensions:
+        await msg.channel.send(f"File type not valid, valid file types are: `{'`, `'.join(valid_extensions)}`")
+        return
     
     filename = f"{working_directory}/{msg.id}_{(time.time_ns() // 100) % 1000000}{file_ext}"
-    
     run_seperate_add_que(msg, "veb_discord_download", veb_discord_download, msg, targets[0], filename, arg)
 
 async def prepare_download(msg, arg):
-        pass
+    pass
 
-async def parse_command(msg):
-    commands = msg.content.split(">>")[:2]
+async def parse_command(msssage):
+    msg = msg.content
+    if len(msg) == 0: return
+    
+    for pre in meta_prefixes:
+        if msg.startswith(pre):
+            msg = msg.premoveprefix(pre).strip()
+            break
+    else:
+        return
+    
+    print(msg)
+    
+    commands = msg.split(">>")[:2]
     for command in commands:
         spl = command.strip().split(' ', 1)
         cmd = spl[0].strip().lower()
         arg = spl[1].strip() if len(spl) == 2 else ""
-        if cmd == "destroy":
-            await prepare_VideoEdit(msg, arg)
+        if cmd in ["destroy", ""]:
+            await prepare_VideoEdit(message, arg)
         elif cmd == "concat":
-            await prepare_VideoEdit(msg, arg)
+            await prepare_VideoEdit(message, arg)
         elif cmd == "download":
             pass
-        # await msg.channel.send(f"Got command: {cmd} | {arg}")
 
 @bot.event
 async def on_ready():
-    global botReady
+    global meta_prefixes, botReady
     if botReady: pass
     
-    botReady = True
+    meta_prefixes += [f"<@{bot.user.id}>", f"<@#{bot.user.id}>"]
     await bot.change_presence(activity = discord_status)
     asyncio.create_task(processQue())
+    botReady = True
     print("Bot ready!")
 
 @bot.event
 async def on_message(msg):
-    if msg.content.lower().strip().split(' ', 1)[0] in ("destroy", "copncat", "download"): #add alisases
-        await parse_command(msg)
+    await parse_command(msg)
 
 bot.run(discord_token)
