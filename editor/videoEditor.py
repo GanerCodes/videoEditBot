@@ -29,7 +29,7 @@ from captions         import normalcaption as capN, impact as capI, poster as ca
 from ytp              import ytp
 
 DELIMITERS = "= :;"
-VEB_Result = namedtuple("VEB_Result", ["Success", "Filename", "Message"])
+VEB_Result = namedtuple("VEB_Result", ["success", "filename", "message"])
 
 def sign(x):
     return -1 if x < 0 else 1
@@ -969,7 +969,7 @@ def edit(file, groupData, par, groupNumber = 0, workingDir = "", resourceDir = "
 
 V, S = float, str
 
-def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(__file__), disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
+def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(__file__), keep_original_file = True, disallowTimecodeBreak = False, keepExtraFiles = False, SHOWTIMER = False, HIDE_FFMPEG_OUT = True, HIDE_ALL_FFMPEG = True, fixPrint = fixPrint, durationUnder = None, allowRandom = True, logErrors = False):
     oldArgs = args
     par = {
         "vbr"           :[V, "vbr" , round(r(0, 100)) ],
@@ -1078,7 +1078,8 @@ def videoEdit(originalFile, args, workingDir = "./", resourceDir = path.dirname(
     try:
         newFileExt = originalFileExt
         makedirs(newFileDir) # Create video dir
-        copyfile(f"{originalFile}", f"{newFileDir}/{newFileHead}") # Move video to new location
+        file_manipulation = copyfile if keep_original_file else rename
+        file_manipulation(f"{originalFile}", f"{newFileDir}/{newFileHead}") # Move video to new location
         
         for i, group in enumerate(args):
             oldFileName = chExt(newFileHead, newFileExt)
