@@ -9,6 +9,8 @@ VBR = "775k"
 ABR = "64k"
 FILESIZE = "6.3M"
 
+result = namedtuple("result", ["success", "filename", "message"])
+
 def youtubeSearch(url):
     txt = ""
     counter = 0
@@ -55,7 +57,8 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         else:
             tmpUrl = url
             url = youtubeSearch(url)
-            if not url: return False
+            if not url:
+                return result(False, "", "YouTube search error")
 
     urlCMD = ["yt-dlp", "--no-playlist", "-g"]
     if cookies and path.isfile(cookies): urlCMD += ["--cookies", cookies]
@@ -65,8 +68,7 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
     if URLs[0] == 0:
         URLs = URLs[1].strip().split('\n')
     else:
-        fixPrint("URL Error, Return code:", URLs[0])
-        return False
+        return result(False, "", "URL parsing error")
     
     videoURL, audioURL = "", ""
     if len(URLs) == 1:
@@ -94,12 +96,11 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         ffmpegCommand += ["-fflags", "+shortest"]
 
     ffmpegCommand += [name]
-    # fixPrint(ffmpegCommand)
 
     if returnCode(ffmpegCommand) != 0:
         fixPrint("Error on download command:", url, skip, delay, duration, video, ffmpegCommand, urlCMD)
-        return False
-    return True
+        return result(False, "", "Error downloading video")
+    return result(True, name, "")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "Download a video based on a URL or query.")

@@ -312,7 +312,7 @@ def edit(file, groupData, par, workingDir = "", resourceDir = "..", toVideo = Fa
     hasAudio = True
     audio = None
 
-    if notNone(d['holdframe']):
+    if notNone(d['holdframe']): # TODO: Breaks if no audio / is gif
         d['holdframe'] = constrain(d['holdframe'], 0.1, 12)
         silent_run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", newName, "-frames:v", "1", f"{pat}/FIRST_FRAME_{e0}.png"])
         video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, r = 30, t = d['holdframe'])

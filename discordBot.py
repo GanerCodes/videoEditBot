@@ -1,15 +1,16 @@
 import os, time, json, random, discord, requests, asyncio
 from collections import namedtuple
-from editor import editor
 from threading import Thread
+from editor import download, editor
 
 config = json.load(open("config.json", 'r'))
 
 message_search_count = int(config["message_search_count"])
-working_directory = os.path.realpath(config["working_directory"])
-discord_tagline = config["discordTagline"]
-discord_token = config["discordToken"]
-meta_prefixes = config["meta_prefixes"]
+working_directory   = os.path.realpath(config["working_directory"])
+discord_tagline     = config["discordTagline"]
+discord_token       = config["discordToken"]
+meta_prefixes       = config["meta_prefixes"]
+cookie_file         = config["cookie_file"] if "cookie_file" in config else None
 
 valid_extensions = ["mp4", "webm", "avi", "mkv", "mov", "png", "gif", "jpg", "jpeg"]
 
@@ -22,7 +23,7 @@ discord_status = discord.Game(name = discord_tagline)
 bot = discord.AutoShardedClient(status = discord_status, intents = intents)
 botReady = False
 
-result = namedtuple("result", ["success", "filename", "message"])
+result = namedtuple("result", ["success", "filename", "message", "asdf"])
 dynamic_task = namedtuple("dynamic_task", ["context", "name", "func", "args", "kwargs"])
 qued_msg = namedtuple("qued_msg", ["context", "name", "result"])
 
@@ -58,20 +59,19 @@ async def processQue():
         if type(res.result) == dynamic_task:
             run_seperate_add_que_redirect(res.result)
             continue
-            
-        match res.name:
-            case "editor":
-                if res.result.success:
-                    with open(res.result.filename, 'rb') as edited_file:
-                        await res.context.reply(
-                            random.choice(config["response_messages"]),
-                            file = discord.File(
-                                edited_file,
-                                filename = f"{res.context.id}{os.path.splitext(res.result.filename)[1]}"
-                            )
+        
+        if type(res.result) == result:
+            if res.result.success:
+                with open(res.result.filename, 'rb') as edited_file:
+                    await res.context.reply(
+                        random.choice(config["response_messages"]),
+                        file = discord.File(
+                            edited_file,
+                            filename = f"{res.context.id}{os.path.splitext(res.result.filename)[1]}"
                         )
-                else:
-                    await res.context.reply(res.result.message)
+                    )
+            else:
+                await res.context.reply(res.result.message)
                 
 
 
@@ -103,6 +103,9 @@ def veb_discord_download(msg, target, filename, veb_args):
         }
     ))
 
+def generate_uuid_from_msg(msg_id):
+    return f"{working_directory}/{msg_id}_{(time.time_ns() // 100) % 1000000}"
+
 async def prepare_VideoEdit(msg, arg):
     targets = (await get_targets(msg)).compile()
     if not targets:
@@ -114,43 +117,48 @@ async def prepare_VideoEdit(msg, arg):
         await msg.channel.send(f"File type not valid, valid file types are: `{'`, `'.join(valid_extensions)}`")
         return
     
-    filename = f"{working_directory}/{msg.id}_{(time.time_ns() // 100) % 1000000}{file_ext}"
+    filename = f"{generate_uuid_from_msg(msg.id)}{file_ext}"
     run_seperate_add_que(msg, "veb_discord_download", veb_discord_download, msg, targets[0], filename, arg)
 
 async def prepare_download(msg, arg):
-    pass
+    run_seperate_add_que(msg, "download", download, f"{generate_uuid_from_msg(msg.id)}.mp4", arg, cookies = cookie_file)
 
-async def parse_command(msssage):
-    msg = msg.content
+async def parse_command(message):
+    msg = message.content
     if len(msg) == 0: return
     
+    has_meta_prefix = message.reference and (await message.channel.fetch_message(message.reference.message_id)).author.id == bot.user.id
     for pre in meta_prefixes:
         if msg.startswith(pre):
-            msg = msg.premoveprefix(pre).strip()
+            has_meta_prefix = True
+            msg = msg.removeprefix(pre).lstrip()
             break
-    else:
-        return
-    
-    print(msg)
     
     commands = msg.split(">>")[:2]
     for command in commands:
         spl = command.strip().split(' ', 1)
-        cmd = spl[0].strip().lower()
-        arg = spl[1].strip() if len(spl) == 2 else ""
+        cmd  = spl[0].strip().lower()
+        args = spl[1].strip() if len(spl) > 1 else ""
         if cmd in ["destroy", ""]:
-            await prepare_VideoEdit(message, arg)
+            await prepare_VideoEdit(message, args)
         elif cmd == "concat":
-            await prepare_VideoEdit(message, arg)
+            await prepare_VideoEdit(message, args)
         elif cmd == "download":
-            pass
+            await prepare_download(message, args)
+        elif has_meta_prefix: # Tags veb, replies to veb, etc
+            await prepare_VideoEdit(message, f"{cmd} {args}")
 
 @bot.event
 async def on_ready():
     global meta_prefixes, botReady
     if botReady: pass
     
-    meta_prefixes += [f"<@{bot.user.id}>", f"<@#{bot.user.id}>"]
+    meta_prefixes += [
+         f"<@{bot.user.id}>",
+        f"<@!{bot.user.id}>",
+        f"<@&{bot.user.id}>",
+        f"<@#{bot.user.id}>",
+    ]
     await bot.change_presence(activity = discord_status)
     asyncio.create_task(processQue())
     botReady = True
