@@ -3,13 +3,14 @@ from json import loads
 from requests import get
 from subprocessHelper import *
 from fixPrint import fixPrint
+from collections import namedtuple
 import argparse
 
 VBR = "775k"
 ABR = "64k"
 FILESIZE = "6.3M"
 
-result = namedtuple("result", ["success", "filename", "message"])
+result = namedtuple("result", "success filename message", defaults = 3 * ' ')
 
 def youtubeSearch(url):
     txt = ""

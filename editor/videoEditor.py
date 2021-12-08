@@ -29,7 +29,7 @@ from captions         import normalcaption as capN, impact as capI, poster as ca
 from ytp              import ytp
 
 DELIMITERS = "= :;"
-result = namedtuple("result", ["success", "filename", "message"])
+result = namedtuple("result", "success filename message", defaults = 3 * ' ')
 
 def sign(x):
     return -1 if x < 0 else 1
@@ -312,7 +312,7 @@ def edit(file, groupData, par, workingDir = "", resourceDir = "..", toVideo = Fa
     hasAudio = True
     audio = None
 
-    if notNone(d['holdframe']): # TODO: Breaks if no audio / is gif
+    if notNone(d['holdframe']): # TODO: Breaks if no audio / is gif, I think just adding silence might fix? idk
         d['holdframe'] = constrain(d['holdframe'], 0.1, 12)
         silent_run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", newName, "-frames:v", "1", f"{pat}/FIRST_FRAME_{e0}.png"])
         video = ffmpeg.input(f"{pat}/FIRST_FRAME_{e0}.png", loop = 1, r = 30, t = d['holdframe'])
