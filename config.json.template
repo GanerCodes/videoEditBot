@@ -1,0 +1,17 @@
+{
+    "working_directory": "./active",
+    "discord_token": "discord token here",
+    "discord_tagline": "some message for bot to display",
+    "message_search_count": 15,
+    "command_chain_limit": 2,
+    "max_concat_count": 3,
+    "response_messages": [
+        "put some response",
+        "messages here"
+    ],
+    "meta_prefixes": [
+        "veb",
+        "videoeditbot",
+        "destroy"
+    ]
+}
