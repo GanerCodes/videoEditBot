@@ -1,6 +1,8 @@
 import os, sys, time, json, random, discord, requests, asyncio, logging
+from combiner import combiner
 from editor.download import download
 from collections import namedtuple
+from func_helper import  *
 from threading import Thread
 from functools import reduce
 from operator import add
@@ -15,16 +17,21 @@ info = lambda *args: logger.info(' | '.join(map(str, args)))
 
 config = json.load(open("config.json", 'r'))
 
-message_search_count = int(config["message_search_count"])
-command_chain_limit  = int(config["command_chain_limit"])
+message_search_count = config["message_search_count"]
+command_chain_limit  = config["command_chain_limit"]
 working_directory    = os.path.realpath(config["working_directory"])
-discord_tagline      = config["discordTagline"]
-discord_token        = config["discordToken"]
+response_messages    = config["response_messages"]
+max_concat_count     = config["max_concat_count"]
+discord_tagline      = config["discord_tagline"]
+discord_token        = config["discord_token"]
 meta_prefixes        = config["meta_prefixes"]
 cookie_file          = config["cookie_file"] if "cookie_file" in config else None
 
-valid_extensions = ["mp4", "webm", "avi", "mkv", "mov", "png", "gif", "jpg", "jpeg"]
+valid_video_extensions = ["mp4", "webm", "avi", "mkv", "mov"]
+valid_image_extensions = ["png", "gif", "jpg", "jpeg"]
+valid_extensions = valid_video_extensions + valid_image_extensions
 
+async_runner = Async_handler()
 taskList, messageQue = [], []
 botReady = False
 
@@ -34,9 +41,8 @@ intents.messages = True # intents.members = True
 discord_status = discord.Game(name = discord_tagline)
 bot = discord.AutoShardedClient(status = discord_status, intents = intents)
 
-dynamic_task = namedtuple("dynamic_task", "context name func args kwargs", defaults = 5 * ' ')
-qued_msg     = namedtuple("qued_msg"    , "context name result"          , defaults = 3 * ' ')
-result       = namedtuple("result"      , "success filename message"     , defaults = 3 * ' ')
+qued_msg = namedtuple("qued_msg", "context message filepath filename reply edit", defaults = 6 * [None])
+result = namedtuple("result", "success filename message", defaults = 3 * [None])
 
 class target_group:
     def __init__(self, attachments, reply, channel):
@@ -46,45 +52,31 @@ class target_group:
     def compile(self):
         return self.attachments + self.reply + self.channel
 
-def same_tuple_type(a, b):
-    return type(a).__name__ == b.__name__
+def generate_uuid_from_msg(msg_id):
+    return f"{msg_id}_{(time.time_ns() // 100) % 1000000}"
 
-def run_seperate_add_que(context, name, func, *args, **kwargs):
-    Thread(
-        target = lambda: messageQue.append(
-            qued_msg(
-                context, name, func(*args, **kwargs)
-            )
-        )
-    ).start()
+def generate_uuid_folder_from_msg(msg_id):
+    return f"{working_directory}/{generate_uuid_from_msg(msg_id)}"
 
-def run_seperate_add_que_redirect(task):
-    run_seperate_add_que(task.context, task.name, task.func, *task.args, **task.kwargs)
+def clean_message(msg):
+    return msg.replace('@', '@'+chr(8206))
 
 async def processQue():
     while True:
         if not len(messageQue):
             await asyncio.sleep(1)
             continue
-        
+            
         res = messageQue.pop(0)
         
-        if same_tuple_type(res.result, dynamic_task):
-            run_seperate_add_que_redirect(res.result)
-            continue
-        
-        if same_tuple_type(res.result, result):
-            if res.result.success:
-                with open(res.result.filename, 'rb') as edited_file:
-                    await res.context.reply(
-                        random.choice(config["response_messages"]),
-                        file = discord.File(
-                            edited_file,
-                            filename = f"{res.context.id}{os.path.splitext(res.result.filename)[1]}"
-                        )
-                    )
-            else:
-                await res.context.reply(res.result.message)
+        action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
+        if res.filename:
+            with open(res.filename, 'rb') as file:
+                args = [res.message] if res.message else []
+                file_kwargs = {"filename": res.filename} if res.filename else {}
+                await action(*args, file = discord.File(file, **file_kwargs))
+        else:
+            await action(res.message)
 
 async def get_targets(msg, attachments = True, reply = True, channel = True, message_search_count = 8, stop_on_first = True):
     msg_attachments, msg_reply, msg_channel = [], [], []
@@ -102,22 +94,19 @@ async def get_targets(msg, attachments = True, reply = True, channel = True, mes
     
     return target_group(msg_attachments, msg_reply, msg_channel)
 
-def veb_discord_download(msg, target, filename, veb_args):
-    r = requests.get(target.url)
+def download_discord_attachment(target, filename, keep_ext = False):
+    if keep_ext:
+        filename = f"{filename}.{os.path.splitext(target.filename)[1][1:]}"
     with open(filename, 'wb') as f:
-        f.write(r.content)
-    
-    run_seperate_add_que_redirect(dynamic_task(
-        msg, "editor", editor, [filename, veb_args], {
-            "workingDir": working_directory,
-            "keepExtraFiles": True
-        }
-    ))
+        f.write(requests.get(target.url).content)
+    return filename
 
-def generate_uuid_from_msg(msg_id):
-    return f"{working_directory}/{msg_id}_{(time.time_ns() // 100) % 1000000}"
+def download_discord_attachments(targets, folder):
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    return [download_discord_attachment(t, folder + '/' + generate_uuid_from_msg(t.id), keep_ext = True) for t in targets]
 
-async def prepare_VideoEdit(msg, arg):
+async def prepare_VideoEdit(msg):
     targets = (await get_targets(msg, message_search_count = message_search_count)).compile()
     if not targets:
         await msg.channel.send("Unable to find a message to edit, maybe upload a video and try again?")
@@ -128,17 +117,51 @@ async def prepare_VideoEdit(msg, arg):
         await msg.channel.send(f"File type not valid, valid file types are: `{'`, `'.join(valid_extensions)}`")
         return
     
-    filename = f"{generate_uuid_from_msg(msg.id)}{file_ext}"
-    run_seperate_add_que(msg, "veb_discord_download", veb_discord_download, msg, targets[0], filename, arg)
+    return targets[0], f"{generate_uuid_folder_from_msg(msg.id)}.{file_ext}"
 
-async def prepare_download(msg, arg):
-    run_seperate_add_que(msg, "download", download, f"{generate_uuid_from_msg(msg.id)}.mp4", arg, duration = 60, cookies = cookie_file)
+async def prepare_concat(msg, args):
+    concat_count, *name_spec = args.split()
+    try:
+        concat_count = min(max_concat_count, max(2, (int(concat_count) if len(concat_count.strip()) else len(msg.attachments))))
+    except Exception:
+        await msg.reply(f'No video amount given, interpreting "{concat_count}" as specifier...')
+        name_spec.insert(0, concat_count)
+        concat_count = min(max_concat_count, max(2, len(name_spec)))
+    
+    targets_unsorted = list(filter(
+        lambda t: os.path.splitext(t.filename)[1][1:] in valid_video_extensions,
+        (await get_targets(msg, message_search_count = message_search_count)).compile()
+    ))[:concat_count]
+    
+    targets = []
+    for s in map(lambda c: c.strip().lower(), name_spec):
+        i = 0
+        while i < len(targets_unsorted):
+            if targets_unsorted[i].filename.lower().startswith(s):
+                targets.append(targets_unsorted.pop(i))
+            i += 1
+    targets += targets_unsorted
+    
+    if len(targets) < 2:
+        await msg.reply("Unable to find enough videos to combine.")
+        return
+    
+    return targets
+
+def process_result_post(msg, res, prefix = None, random_message = True, filename = "video.mp4"):
+    if res.success:
+        text = random.choice(response_messages) if random_message else res.message
+        content = f"{prefix} ║ {text}" if prefix else text
+        messageQue.append(qued_msg(context = msg, filepath = res.filename, filename = filename, message = content, reply = True))
+    else:
+        messageQue.append(qued_msg(context = msg, message = res.message, reply = True))
 
 async def parse_command(message):
     msg = message.content
     if len(msg) == 0: return
     
     has_meta_prefix = message.reference and (await message.channel.fetch_message(message.reference.message_id)).author.id == bot.user.id
+    
     append_space = ' ' if ' ' in msg else ''
     for pre in meta_prefixes:
         if msg.startswith(pre + append_space):
@@ -147,21 +170,72 @@ async def parse_command(message):
             break
     
     commands = msg.split(">>")[:command_chain_limit]
-    
-    command = commands[0]
-    chained = '>>'.join(command[1:])
-    spl = command.strip().split(' ', 1)
-    cmd  = spl[0].strip().lower()
-    args = spl[1].strip() if len(spl) > 1 else ""
-    if cmd in ["destroy", ""]:
-        await prepare_VideoEdit(message, args)
-    elif cmd == "concat":
-        pass
-        # await prepare_VideoEdit(message, args)
-    elif cmd == "download":
-        await prepare_download(message, args)
-    elif has_meta_prefix: # Tags veb, replies to veb, etc
-        await prepare_VideoEdit(message, f"{cmd} {args}")
+    for command in commands: # scuffed way of processing commands
+        spl = command.strip().split(' ', 1)
+        cmd  = spl[0].strip().lower()
+        args = spl[1].strip() if len(spl) > 1 else ""
+        
+        if cmd == "concat":
+            Task(
+                Action(prepare_concat, message, args,
+                    name = "Concat Command Prep"
+                ),
+                Action(download_discord_attachments, swap_arg("result"), generate_uuid_folder_from_msg(message.id),
+                    name = "Download videos to Concat"
+                ),
+                Action(combiner, swap_arg("result"), (concat_filename := f"{generate_uuid_folder_from_msg(message.id)}.mp4"),
+                    SILENCE = "./editor/SILENCE.mp3",
+                    print_info = False,
+                    name = "Concat Videos",
+                    fail_action = Action(
+                        lambda n, e: messageQue.append(
+                            qued_msg(
+                                context = message,
+                                message = "Sorry, something went wrong during concatenation.",
+                                reply = True
+                            )
+                        )
+                    )
+                ),
+                Action(process_result_post, message, result(True, concat_filename, ""), concat_filename,
+                    name = "Post Concat"
+                ),
+                async_handler = async_runner
+            ).run_threaded()
+        elif cmd == "download":
+            Task(
+                Action(download, download_filename := f"{generate_uuid_folder_from_msg(message.id)}.mp4", args, name = "yt-dlp download"),
+                Action(process_result_post, message, swap_arg("result"), download_filename, name = "Post Download"),
+            ).run_threaded()
+        elif (ev1 := (cmd in ["destroy", ""])) or has_meta_prefix:
+            if not ev1 or cmd == "":
+                args = f"{cmd} {args}"
+            Task(
+                Action(prepare_VideoEdit, message,
+                    name = "VEB Command Prep",
+                    check = lambda x: x is not None,
+                    parse = lambda x: {
+                        "target": x[0],
+                        "filename": x[1]
+                    }
+                ),
+                Action(download_discord_attachment, swap_arg("target"), swap_arg("filename"),
+                    name = "VEB Download Target"
+                ),
+                Action(editor, swap_arg("filename"), args, workingDir = working_directory, keepExtraFiles = True,
+                    name = "VEB",
+                    parse = lambda x: {
+                        "result": x,
+                        "filename": x.filename
+                    }
+                ),
+                Action(process_result_post, message, swap_arg("result"), swap_arg("filename"),
+                    name = "VEB Post"
+                ),
+                async_handler = async_runner,
+                persist_result_values = True
+            ).run_threaded()
+        
 
 @bot.event
 async def on_ready():
@@ -176,6 +250,7 @@ async def on_ready():
     ]
     await bot.change_presence(activity = discord_status)
     asyncio.create_task(processQue())
+    asyncio.create_task(async_runner.looper())
     botReady = True
     info("Bot ready!")
 
