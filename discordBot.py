@@ -1,12 +1,13 @@
 import os, sys, time, json, random, discord, requests, asyncio, logging
 from combiner import combiner
 from editor.download import download
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from func_helper import  *
 from threading import Thread
 from functools import reduce
 from operator import add
 from editor import editor
+from math import ceil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -31,18 +32,35 @@ valid_video_extensions = ["mp4", "webm", "avi", "mkv", "mov"]
 valid_image_extensions = ["png", "gif", "jpg", "jpeg"]
 valid_extensions = valid_video_extensions + valid_image_extensions
 
-async_runner = Async_handler()
-taskList, messageQue = [], []
-botReady = False
+get_default = lambda v, d = config["unspecified_default_timeout"]: v["default"] if "default" in v else d
+def config_timeout(default, custom):
+    default_timeout = get_default(default)
+    return defaultdict(
+        lambda: defaultdict(
+            lambda: default_timeout, **default
+        ), **{
+            k: defaultdict(
+                lambda: get_default(v, default_timeout), **v
+            ) for k, v in custom.items()
+        }
+    )
 
-if not os.path.isdir(working_directory): os.makedirs(working_directory)
-intents = discord.Intents.default()
-intents.messages = True # intents.members = True
-discord_status = discord.Game(name = discord_tagline)
-bot = discord.AutoShardedClient(status = discord_status, intents = intents)
+guild_timeout_durations = config_timeout(config["default_guild_timeouts"], config["custom_guild_timeouts"])
+user_timeout_durations = config_timeout(config["default_user_timeouts"], config["custom_user_timeouts"])
+guild_timeouts = defaultdict(lambda: 0)
+user_timeouts  = defaultdict(lambda: 0)
 
 qued_msg = namedtuple("qued_msg", "context message filepath filename reply edit", defaults = 6 * [None])
 result = namedtuple("result", "success filename message", defaults = 3 * [None])
+
+async_runner = Async_handler()
+taskList, messageQue = [], []
+
+intents = discord.Intents.default()
+intents.messages = True
+# intents.members = True
+discord_status = discord.Game(name = discord_tagline)
+bot = discord.AutoShardedClient(status = discord_status, intents = intents)
 
 class target_group:
     def __init__(self, attachments, reply, channel):
@@ -52,6 +70,9 @@ class target_group:
     def compile(self):
         return self.attachments + self.reply + self.channel
 
+def human_size(bytes, units=[' bytes','KB','MB','GB','TB', 'PB', 'EB']): # https://stackoverflow.com/a/43750422/14501641
+    return str(bytes) + units[0] if bytes < 1024 else human_size(bytes>>10, units[1:])
+
 def generate_uuid_from_msg(msg_id):
     return f"{msg_id}_{(time.time_ns() // 100) % 1000000}"
 
@@ -59,7 +80,30 @@ def generate_uuid_folder_from_msg(msg_id):
     return f"{working_directory}/{generate_uuid_from_msg(msg_id)}"
 
 def clean_message(msg):
-    return msg.replace('@', '@'+chr(8206))
+    return msg.replace(chr(8206), '').replace('@', '@'+chr(8206))
+
+def apply_timeouts(msg, command,
+        guild_timeout_durations = guild_timeout_durations,
+        user_timeout_durations = user_timeout_durations,
+        guild_timeouts = guild_timeouts,
+        user_timeouts = user_timeouts):
+    
+    ahr_id = str(msg.author.id)
+    gld_id = str(msg.guild.id )
+    
+    if "ghost" in user_timeout_durations[ahr_id] or "ghost" in guild_timeout_durations[gld_id]:
+        return True
+    
+    ct = time.time()
+    if ct < (gt := guild_timeouts[gld_id]):
+        return gt - ct
+    if ct < (ut := user_timeouts [ahr_id]):
+        return ut - ct
+    
+    guild_timeouts[gld_id] = ct + guild_timeout_durations[gld_id][command]
+    user_timeouts [gld_id] = ct + user_timeout_durations [ahr_id][command]
+    
+    return True
 
 async def processQue():
     while True:
@@ -71,10 +115,13 @@ async def processQue():
         
         action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
         if res.filename:
-            with open(res.filename, 'rb') as file:
-                args = [res.message] if res.message else []
-                file_kwargs = {"filename": res.filename} if res.filename else {}
-                await action(*args, file = discord.File(file, **file_kwargs))
+            if (filesize := os.path.getsize(res.filename)) >= 8000000:
+                await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over Discord's 8MB upload limit.")
+            else:
+                with open(res.filename, 'rb') as file:
+                    args = [res.message] if res.message else []
+                    file_kwargs = {"filename": res.filename} if res.filename else {}
+                    await action(*args, file = discord.File(file, **file_kwargs))
         else:
             await action(res.message)
 
@@ -120,18 +167,22 @@ async def prepare_VideoEdit(msg):
     return targets[0], f"{generate_uuid_folder_from_msg(msg.id)}.{file_ext}"
 
 async def prepare_concat(msg, args):
-    concat_count, *name_spec = args.split()
+    concat_count, *name_spec = params if len(params := args.split()) else '2'
     try:
         concat_count = min(max_concat_count, max(2, (int(concat_count) if len(concat_count.strip()) else len(msg.attachments))))
-    except Exception:
+    except Exception as err:
         await msg.reply(f'No video amount given, interpreting "{concat_count}" as specifier...')
         name_spec.insert(0, concat_count)
         concat_count = min(max_concat_count, max(2, len(name_spec)))
     
     targets_unsorted = list(filter(
         lambda t: os.path.splitext(t.filename)[1][1:] in valid_video_extensions,
-        (await get_targets(msg, message_search_count = message_search_count)).compile()
+        (await get_targets(msg, message_search_count = message_search_count, stop_on_first = False)).compile()
     ))[:concat_count]
+    
+    if len(targets_unsorted) < 2:
+        await msg.reply("Unable to find enough videos to combine.")
+        return
     
     targets = []
     for s in map(lambda c: c.strip().lower(), name_spec):
@@ -142,22 +193,21 @@ async def prepare_concat(msg, args):
             i += 1
     targets += targets_unsorted
     
-    if len(targets) < 2:
-        await msg.reply("Unable to find enough videos to combine.")
-        return
-    
     return targets
 
-def process_result_post(msg, res, prefix = None, random_message = True, filename = "video.mp4"):
+def process_result_post(msg, res, filename = "video.mp4", prefix = None, random_message = True):
     if res.success:
         text = random.choice(response_messages) if random_message else res.message
-        content = f"{prefix} ║ {text}" if prefix else text
+        content = f"{prefix.strip()} ║ {text.strip()}" if prefix else text.strip()
         messageQue.append(qued_msg(context = msg, filepath = res.filename, filename = filename, message = content, reply = True))
     else:
         messageQue.append(qued_msg(context = msg, message = res.message, reply = True))
 
 async def parse_command(message):
-    msg = message.content
+    if message.author.id == bot.user.id and not '║' in message.content:
+        return
+    
+    msg = message.content.split('║', 1)[0]
     if len(msg) == 0: return
     
     has_meta_prefix = message.reference and (await message.channel.fetch_message(message.reference.message_id)).author.id == bot.user.id
@@ -169,19 +219,37 @@ async def parse_command(message):
             msg = msg.removeprefix(pre).lstrip()
             break
     
-    commands = msg.split(">>")[:command_chain_limit]
-    for command in commands: # scuffed way of processing commands
-        spl = command.strip().split(' ', 1)
-        cmd  = spl[0].strip().lower()
-        args = spl[1].strip() if len(spl) > 1 else ""
-        
-        if cmd == "concat":
+    command, *remainder = msg.split(">>")[:command_chain_limit]
+    remainder = clean_message('>>'.join(remainder))
+    
+    spl = command.strip().split(' ', 1)
+    cmd  = spl[0].strip().lower()
+    args = spl[1].strip() if len(spl) > 1 else ""
+    
+    final_command_name = None
+    if cmd in ["concat", "combine"]:
+        final_command_name = "concat"
+    elif cmd in ["download", "downloader"]:
+        final_command_name = "download"
+    elif (ev1 := (cmd in ["destroy", ""])) or has_meta_prefix:
+        final_command_name = "destroy"
+        if not ev1 or cmd == "":
+            args = f"{cmd} {args}"
+
+    if (remaining_time := apply_timeouts(message, cmd)) != True:
+        await message.reply(f"Please wait {ceil(remaining_time)} seconds to use this command again.")
+        return
+
+    match final_command_name:
+        case "concat":
             Task(
                 Action(prepare_concat, message, args,
-                    name = "Concat Command Prep"
+                    name = "Concat Command Prep",
+                    check = lambda x: x
                 ),
                 Action(download_discord_attachments, swap_arg("result"), generate_uuid_folder_from_msg(message.id),
-                    name = "Download videos to Concat"
+                    name = "Download videos to Concat",
+                    check = lambda x: x
                 ),
                 Action(combiner, swap_arg("result"), (concat_filename := f"{generate_uuid_folder_from_msg(message.id)}.mp4"),
                     SILENCE = "./editor/SILENCE.mp3",
@@ -197,27 +265,28 @@ async def parse_command(message):
                         )
                     )
                 ),
-                Action(process_result_post, message, result(True, concat_filename, ""), concat_filename,
+                Action(process_result_post, message, result(True, concat_filename, ""), concat_filename, remainder,
                     name = "Post Concat"
                 ),
                 async_handler = async_runner
             ).run_threaded()
-        elif cmd == "download":
+        case "download":
             Task(
                 Action(download, download_filename := f"{generate_uuid_folder_from_msg(message.id)}.mp4", args, name = "yt-dlp download"),
-                Action(process_result_post, message, swap_arg("result"), download_filename, name = "Post Download"),
+                Action(process_result_post, message, swap_arg("result"), download_filename, remainder,
+                    name = "Post Download"
+                ),
             ).run_threaded()
-        elif (ev1 := (cmd in ["destroy", ""])) or has_meta_prefix:
-            if not ev1 or cmd == "":
-                args = f"{cmd} {args}"
+        case "destroy":
             Task(
                 Action(prepare_VideoEdit, message,
                     name = "VEB Command Prep",
-                    check = lambda x: x is not None,
+                    check = lambda x: x,
                     parse = lambda x: {
                         "target": x[0],
                         "filename": x[1]
-                    }
+                    },
+                    skip_task_fail_handler = True
                 ),
                 Action(download_discord_attachment, swap_arg("target"), swap_arg("filename"),
                     name = "VEB Download Target"
@@ -229,17 +298,17 @@ async def parse_command(message):
                         "filename": x.filename
                     }
                 ),
-                Action(process_result_post, message, swap_arg("result"), swap_arg("filename"),
+                Action(process_result_post, message, swap_arg("result"), swap_arg("filename"), remainder,
                     name = "VEB Post"
                 ),
                 async_handler = async_runner,
                 persist_result_values = True
             ).run_threaded()
-        
-
+            
+botReady = False
 @bot.event
 async def on_ready():
-    global meta_prefixes, botReady
+    global botReady, meta_prefixes
     if botReady: pass
     
     meta_prefixes += [
@@ -248,6 +317,9 @@ async def on_ready():
         f"<@&{bot.user.id}>",
         f"<@#{bot.user.id}>",
     ]
+    user_timeout_durations[bot.user.id]["ghost"] = True
+    if not os.path.isdir(working_directory):
+        os.makedirs(working_directory)
     await bot.change_presence(activity = discord_status)
     asyncio.create_task(processQue())
     asyncio.create_task(async_runner.looper())

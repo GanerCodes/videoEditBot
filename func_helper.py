@@ -9,22 +9,22 @@ async_handler_action = namedtuple("async_handler_action", "func args kwargs")
 
 class Async_handler:
     def __init__(self, timeout = 300, refresh_rate = 1, action_refresh_rate = 1):
-        self.que = {}
-        self.timeout = timeout
-        self.refresh_rate = refresh_rate
-        self.action_refresh_rate = action_refresh_rate
+        self.que = {} # Que of functions to evaluate asynchronously 
+        self.timeout = timeout # How long can a function be in que before timeout
+        self.refresh_rate = refresh_rate # How many seconds between each check of function timeout
+        self.action_refresh_rate = action_refresh_rate # How many seconds between executing the que 
 
     def run(self, func, *args, **kwargs):
-        ide = str(uuid4())
-        self.que[ide] = (param := async_handler_action(func, args, kwargs))
+        ide = str(uuid4()) # ID for function
+        self.que[ide] = (param := async_handler_action(func, args, kwargs)) # Set up parameters
         for i in range(self.timeout):
-            if self.que[ide] == param:
+            if self.que[ide] == param: # Unchanged value
                 time.sleep(self.action_refresh_rate)
-            else:
+            else: # Value changed, return it
                 ret = self.que[ide]
                 del self.que[ide]
                 return ret
-        else:
+        else: # Timed out
             del self.que[ide]
             return Exception("Timeout")
     
@@ -32,31 +32,45 @@ class Async_handler:
         while True:
             for ide, action in self.que.items():
                 if type(action) == async_handler_action:
-                    try:
+                    try: # Set que item to result
                         self.que[ide] = (await action.func(*action.args, **action.kwargs))
-                    except Exception as err:
+                    except Exception as err: # On failure, set result to error
                         self.que[ide] = err
-                         
+                        
             await asyncio.sleep(self.refresh_rate)
 
 class Action:
-    def __init__(self, func, *args, fails_task = True, name = "Action", check = None, parse = None, fail_action = None, success_action = None, **kwargs):
-        self.func           = func
-        self.args           = list(args)
-        self.kwargs         = kwargs
-        self.name           = name
-        self.parse          = parse or (lambda x: {"result": x})
-        self.check          = check or (lambda x: True)
-        self.fails_task     = fails_task
-        self.fail_action    = fail_action
-        self.success_action = success_action
-        self.async_handler  = None
+    def __init__(self,
+            func, *args,
+            fails_task = True,
+            name = "Action",
+            check = None,
+            parse = None,
+            fail_action = None,
+            success_action = None,
+            skip_task_success_handler = False,
+            skip_task_fail_handler = False,
+            check_before_parse = True, 
+            **kwargs):
+        self.func = func # Function to run
+        self.args = list(args) # Normal arguments for function
+        self.kwargs = kwargs # keyword arguments for function
+        self.name = name # Name for this action, mostly just used for logging purposes
+        self.parse = parse or (lambda x: {"result": x}) # Function to apply on function result
+        self.check = check or (lambda x: True) # Function to check if function result is successful
+        self.check_before_parse = check_before_parse # Should we only parse before or after success checker
+        self.fails_task = fails_task # Does action fail terminate tast?
+        self.success_action = success_action # Action to perform on success
+        self.fail_action = fail_action # Action to perform on failure
+        self.skip_task_success_handler = skip_task_success_handler # On success, ignore task's general success handler
+        self.skip_task_fail_handler = skip_task_fail_handler # On fail, ignore task's general fail handler
+        self.async_handler = None # Handler to run async functions
     
     def execute(self, *args, **kwargs):
         args   = args   or self.args  .copy()
         kwargs = kwargs or self.kwargs.copy()
         try:
-            if asyncio.iscoroutinefunction(self.func):
+            if asyncio.iscoroutinefunction(self.func): # Execute async functions
                 if self.async_handler:
                     value = self.async_handler.run(self.func, *args, **kwargs)
                     if type(value) == Exception:
@@ -64,32 +78,45 @@ class Action:
                 else:
                     return action_result(False, "Unable to run async function: no async handler specified.")
             else:
-                value = self.func(*args, **kwargs)
-            result = self.parse(value)
+                value = self.func(*args, **kwargs) # Execute normal functions
             
-            if self.check(result):
-                return action_result(True, result)
+            # Ordering and running of parse and check
+            if self.check_before_parse:
+                if checked_value := self.check(value):
+                    result = self.parse(value)
+                else:
+                    result = value
             else:
-                return action_result(False, result)
+                result = self.parse(result)
+                checked_value = self.check(result)
+            
+            if checked_value:
+                return action_result(True, result) # Return success
+            else:
+                return action_result(False, result) # Return failure
         except Exception as err:
+            # return execution faliure 
             return action_result(False, err)
     
     def __str__(self):
         return f'''func="{self.func.__name__}" args="{self.args}" fails_task="{self.fails_task}" kwargs="{self.kwargs}"'''
 
 class Task:
-    def __init__(self, *actions, fail_handler = None, success_handler = None, async_handler = None, persist_result_values = False):
+    def __init__(self,
+            *actions,
+            fail_handler = None,
+            success_handler = None,
+            async_handler = None,
+            persist_result_values = False):
+        self.actions = list(actions) # List of actions to perform
+        self.success_handler = success_handler or (lambda name, val: ()) # Generic function to perform on action success 
         self.fail_handler = fail_handler or (
             lambda name, err: print(f"{name}: Error!", ''.join(traceback.format_exception(err)), self)
-        )
-        self.success_handler = success_handler or (lambda name, val: ())
-        self.async_handler = async_handler
-        self.persist_result_values = persist_result_values
+        ) # Generic function to perform on  action faliure 
+        self.async_handler = async_handler # Handler to execute async functions
+        self.persist_result_values = persist_result_values # Does the resulting value dictionary keep values from previous actions or only last action
         
-        self.actions = list(actions)
-        if len(self.actions):
-            self.actions[0].first = True
-        for action in self.actions:
+        for action in self.actions: # Give actions the async handler
             action.async_handler = self.async_handler
 
     def run(self):
@@ -104,15 +131,19 @@ class Task:
             ) for k, v in action.kwargs.items()}
             
             cur_result = action.execute(*args, **kwargs) # success, value
-            if not cur_result.success: # Failed
+            if cur_result.success: # success
+                if action.success_action: # Run action's built in success handler
+                    action.success_action.execute(action.name, cur_result.value)
+                if not action.skip_task_success_handler: # check task success override
+                    self.success_handler(action.name, cur_result.value) # Run task success action
+            else: # Failed
                 if action.fail_action: # Run action's built in fail handler
                     action.fail_action.execute(action.name, cur_result.value)
                 if action.fails_task: # Run task failed action
-                    return self.fail_handler(action.name, cur_result.value)
-            else: # Success
-                if action.success_action: # Run action's built in success handler
-                    action.success_action.execute(action.name, cur_result.value)
-                self.success_handler(action.name, cur_result.value) # Run task success action
+                    if action.skip_task_fail_handler: # check task fail override
+                        return action.name, cur_result.value
+                    else:
+                        return self.fail_handler(action.name, cur_result.value)
             
             if self.persist_result_values:
                 result |= cur_result.value # Merge previous results
