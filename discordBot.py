@@ -186,8 +186,6 @@ async def prepare_concat(msg, args):
         (await get_targets(msg, message_search_count = message_search_count, stop_on_first = False)).compile()
     ))[:concat_count]
     
-    print(targets_unsorted)
-    
     if len(targets_unsorted) < 2:
         await msg.reply("Unable to find enough videos to combine.")
         return
