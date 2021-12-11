@@ -68,7 +68,8 @@ class target_group:
         self.reply       = reply
         self.channel     = channel
     def compile(self):
-        return self.attachments + self.reply + self.channel
+        k = []; [k.append(i) for i in (self.attachments + self.reply + self.channel) if i not in k]
+        return k
 
 def human_size(size, units=[' bytes','KB','MB','GB','TB', 'PB', 'EB']): # https://stackoverflow.com/a/43750422/14501641
     return str(size) + units[0] if size < 1024 else human_size(size >> 10, units[1:])
