@@ -70,8 +70,8 @@ class target_group:
     def compile(self):
         return self.attachments + self.reply + self.channel
 
-def human_size(bytes, units=[' bytes','KB','MB','GB','TB', 'PB', 'EB']): # https://stackoverflow.com/a/43750422/14501641
-    return str(bytes) + units[0] if bytes < 1024 else human_size(bytes>>10, units[1:])
+def human_size(size, units=[' bytes','KB','MB','GB','TB', 'PB', 'EB']): # https://stackoverflow.com/a/43750422/14501641
+    return str(size) + units[0] if size < 1024 else human_size(size >> 10, units[1:])
 
 def generate_uuid_from_msg(msg_id):
     return f"{msg_id}_{(time.time_ns() // 100) % 1000000}"
@@ -115,13 +115,18 @@ async def processQue():
         
         action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
         if res.filename:
-            if (filesize := os.path.getsize(res.filename)) >= 8000000:
+            if (filesize := os.path.getsize(res.filename)) >= 8 * 1024 ** 2:
                 await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over Discord's 8MB upload limit.")
             else:
-                with open(res.filename, 'rb') as file:
+                with open(res.filename, 'rb') as f:
                     args = [res.message] if res.message else []
                     file_kwargs = {"filename": res.filename} if res.filename else {}
-                    await action(*args, file = discord.File(file, **file_kwargs))
+                    if res.message and res.context.content.startswith('!') and (action == res.context.reply and res.context.author.id == bot.user.id):
+                        await res.context.delete()
+                        await asyncio.sleep(1)
+                        await res.context.channel.send(*args, file = discord.File(f, **file_kwargs))
+                    else:
+                        await action(*args, file = discord.File(f, **file_kwargs))
         else:
             await action(res.message)
 
@@ -180,6 +185,8 @@ async def prepare_concat(msg, args):
         (await get_targets(msg, message_search_count = message_search_count, stop_on_first = False)).compile()
     ))[:concat_count]
     
+    print(targets_unsorted)
+    
     if len(targets_unsorted) < 2:
         await msg.reply("Unable to find enough videos to combine.")
         return
@@ -219,8 +226,19 @@ async def parse_command(message):
             msg = msg.removeprefix(pre).lstrip()
             break
     
-    command, *remainder = msg.split(">>")[:command_chain_limit]
-    remainder = clean_message('>>'.join(remainder))
+    cmd_name_opts = ["concat", "combine", "download", "downloader", "destroy"]
+    
+    author_id = str(message.author.id)
+    chain_limit = 9999 if message.author.id == bot.user.id else user_timeout_durations[author_id]["max_chain"] if (author_id in user_timeout_durations and "max_chain" in user_timeout_durations[author_id]) else command_chain_limit
+    
+    command, *remainder = msg.split(">>")[:chain_limit]
+    if command.startswith('!'):
+        command = command.removeprefix('!')
+    
+    remainder = clean_message('>>'.join(remainder)).strip()
+    
+    if len(remainder) and not any(remainder.removeprefix('!').startswith(i) for i in cmd_name_opts):
+        remainder = f"destroy {remainder}"
     
     spl = command.strip().split(' ', 1)
     cmd  = spl[0].strip().lower()
@@ -235,6 +253,9 @@ async def parse_command(message):
         final_command_name = "destroy"
         if not ev1 or cmd == "":
             args = f"{cmd} {args}"
+
+    if not final_command_name:
+        return
 
     if (remaining_time := apply_timeouts(message, cmd)) != True:
         await message.reply(f"Please wait {ceil(remaining_time)} seconds to use this command again.")
@@ -317,7 +338,7 @@ async def on_ready():
         f"<@&{bot.user.id}>",
         f"<@#{bot.user.id}>",
     ]
-    user_timeout_durations[bot.user.id]["ghost"] = True
+    user_timeout_durations[str(bot.user.id)]["ghost"] = True
     if not os.path.isdir(working_directory):
         os.makedirs(working_directory)
     await bot.change_presence(activity = discord_status)
