@@ -219,8 +219,9 @@ async def parse_command(message):
     msg = message.content.split('║', 1)[0]
     if len(msg) == 0: return
     
-    has_meta_prefix = message.reference and (await message.channel.fetch_message(message.reference.message_id)).author.id == bot.user.id
+    is_reply_to_bot = message.reference and (await message.channel.fetch_message(message.reference.message_id)).author.id == bot.user.id
     
+    has_meta_prefix = is_reply_to_bot
     append_space = ' ' if ' ' in msg else ''
     for pre in meta_prefixes:
         if msg.startswith(pre + append_space):
@@ -236,6 +237,9 @@ async def parse_command(message):
     command, *remainder = msg.split(">>")[:chain_limit]
     if command.startswith('!'):
         command = command.removeprefix('!')
+    
+    if message.author.id != bot.user.id and not is_reply_to_bot and command.strip() == "":
+        return
     
     remainder = clean_message('>>'.join(remainder)).strip()
     
