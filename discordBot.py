@@ -220,6 +220,9 @@ async def parse_command(message):
     if len(msg) == 0: return
     
     is_reply_to_bot = message.reference and (await message.channel.fetch_message(message.reference.message_id)).author.id == bot.user.id
+
+    if message.author.id != bot.user.id and not is_reply_to_bot and msg.split('>>')[0].removeprefix('!').strip() == "":
+        return
     
     has_meta_prefix = is_reply_to_bot
     append_space = ' ' if ' ' in msg else ''
@@ -237,9 +240,6 @@ async def parse_command(message):
     command, *remainder = msg.split(">>")[:chain_limit]
     if command.startswith('!'):
         command = command.removeprefix('!')
-    
-    if message.author.id != bot.user.id and not is_reply_to_bot and command.strip() == "":
-        return
     
     remainder = clean_message('>>'.join(remainder)).strip()
     
