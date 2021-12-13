@@ -1,3 +1,6 @@
+# TODO: every 5 minutes scan, with another bot, update the donor guilds/users.
+# Check owner of guild when processing command, apply relevent donor perks
+
 import os, sys, time, json, random, discord, requests, asyncio, logging
 from combiner import combiner
 from editor.download import download
