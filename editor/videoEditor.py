@@ -859,19 +859,8 @@ def edit(file, groupData, par, workingDir = "", resourceDir = "..", toVideo = Fa
         d['ytp'] = ceil(constrain(d['ytp'], 0, 100) / 10 * (float(DURATION) / 8))
         ytp(newName, int(d['ytp']), hasAudio)
     def FXdatamosh():
-        nonlocal newName, d
-        # d['datamosh'] = constrain(d['datamosh'], 3, 100)
-        # if d['datamosh'] > 4:
-        #     kint = int(100 - d['datamosh'] / 1.25)
-        #     silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-x264-params", f"kint={kint}", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
-        # else:
-        #     silent_run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", newName, "-vcodec", "libx264", "-max_muxing_queue_size", "1024", f"{pat}/1_{e0}.avi"])
-        # remove(newName)
-        # silent_run(["datamosh", "-o", f"{pat}/2_{e0}.avi", f"{pat}/1_{e0}.avi"], shell = True)
-        # silent_run(["ffmpeg", "-hide_banner", "-loglevel", "fatal", "-i", f"{pat}/2_{e0}.avi", f"{pat}/3_{e0}.mp4"])
-        # remove(f"{pat}/2_{e0}.avi")
-        # rename(f"{pat}/3_{e0}.mp4", newName)
-        datamosh(newName, f"{pat}/datamosh_{e0}.mp4", replace_input = True)
+        nonlocal newName, hasAudio, d
+        datamosh(newName, f"{pat}/datamosh_{e0}.mp4", replace_input = True, has_audio = hasAudio)
     def FXricecake():
         nonlocal newName, hasAudio, DURATION, d
         d['ricecake'] = constrain(d['ricecake'], 0, 100)

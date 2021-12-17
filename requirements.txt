@@ -1,6 +1,8 @@
-psutil
+ffprobe-python
 ffmpeg-python
 discord.py
+pyjson5
+psutil
 Pillow
-pydub
 yt-dlp
+pydub

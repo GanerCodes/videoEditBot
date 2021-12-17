@@ -30,12 +30,16 @@ class Async_handler:
     
     async def looper(self):
         while True:
-            for ide, action in self.que.items():
-                if type(action) == async_handler_action:
-                    try: # Set que item to result
-                        self.que[ide] = (await action.func(*action.args, **action.kwargs))
-                    except Exception as err: # On failure, set result to error
-                        self.que[ide] = err
+            try:
+                for ide in list(self.que):
+                    action = self.que[ide]
+                    if type(action) == async_handler_action:
+                        try: # Set que item to result
+                            self.que[ide] = (await action.func(*action.args, **action.kwargs))
+                        except Exception as err: # On failure, set result to error
+                            self.que[ide] = err
+            except Exception as err:
+                print(f"Error in looper! {err}")
                         
             await asyncio.sleep(self.refresh_rate)
 

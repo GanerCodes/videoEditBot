@@ -1,7 +1,8 @@
 # TODO: every 5 minutes scan, with another bot, update the donor guilds/users.
 # Check owner of guild when processing command, apply relevent donor perks
 
-import os, sys, time, json, random, discord, requests, asyncio, logging
+import os, sys, time, random, discord, requests, asyncio, logging
+from pyjson5 import load as json_load
 from combiner import combiner
 from editor.download import download
 from collections import namedtuple, defaultdict
@@ -19,7 +20,7 @@ logger_handler.setLevel(logging.DEBUG)
 logger.addHandler(logger_handler)
 info = lambda *args: logger.info(' | '.join(map(str, args)))
 
-config = json.load(open("config.json", 'r'))
+config = json_load(open("config.json", 'r'))
 
 message_search_count = config["message_search_count"]
 command_chain_limit  = config["command_chain_limit"]
@@ -30,6 +31,10 @@ discord_tagline      = config["discord_tagline"]
 discord_token        = config["discord_token"]
 meta_prefixes        = config["meta_prefixes"]
 cookie_file          = config["cookie_file"] if "cookie_file" in config else None
+donor_guild_id       = config["donor_guild_id"] if "donor_guild_id" in config else None
+
+donor_teir_roles = config["donor_teir_roles"] if donor_guild_id else None
+donor_guild_check_seconds = config["donor_guild_check_seconds"] if donor_guild_id else None
 
 valid_video_extensions = ["mp4", "webm", "avi", "mkv", "mov"]
 valid_image_extensions = ["png", "gif", "jpg", "jpeg"]
@@ -61,7 +66,7 @@ taskList, messageQue = [], []
 
 intents = discord.Intents.default()
 intents.messages = True
-# intents.members = True
+intents.members = True
 discord_status = discord.Game(name = discord_tagline)
 bot = discord.AutoShardedClient(status = discord_status, intents = intents)
 
@@ -94,20 +99,63 @@ def apply_timeouts(msg, command,
     
     ahr_id = str(msg.author.id)
     gld_id = str(msg.guild.id )
+    gld_own_id = str(msg.guild.owner.id)
     
     if "ghost" in user_timeout_durations[ahr_id] or "ghost" in guild_timeout_durations[gld_id]:
         return True
     
+    gt, ut = guild_timeouts[gld_id], user_timeouts[ahr_id]
+    is_donor_user = "donor" in user_timeout_durations[ahr_id]
+    is_donor_guild = "donor" in user_timeout_durations[gld_own_id]
+    
     ct = time.time()
-    if ct < (gt := guild_timeouts[gld_id]):
+    if not is_donor_user and ct < gt:
         return gt - ct
-    if ct < (ut := user_timeouts [ahr_id]):
+    if ct < ut:
         return ut - ct
     
-    guild_timeouts[gld_id] = ct + guild_timeout_durations[gld_id][command]
-    user_timeouts [gld_id] = ct + user_timeout_durations [ahr_id][command]
+    user_timeouts[ahr_id] = ct + user_timeout_durations[ahr_id][command] * (
+        user_timeout_durations[ahr_id]["user_timeout_multiplier"] if is_donor_user else 1)
+    if not is_donor_user:
+        guild_timeouts[gld_id] = ct + guild_timeout_durations[gld_id][command] * (
+            user_timeout_durations[gld_own_id]["guild_timeout_multiplier"] if is_donor_guild else 1)
     
     return True
+
+async def check_donors():
+    global guild_timeout_durations, user_timeout_durations
+    
+    donor_guild = bot.get_guild(int(donor_guild_id))
+    count = 0
+    while True:
+        if not donor_guild:
+            print("Unable to get donor guild! Retrying in 10 seconds.")
+            await asyncio.sleep(10)
+            donor_guild = bot.get_guild(donor_guild_id)
+            continue
+        
+        new_users = {}
+        for role_id, perks in donor_teir_roles.items(): # Iterate donor roles
+            discord_role = donor_guild.get_role(int(role_id))
+            user_perks, guild_perks = perks["user"], perks["guild"]
+            for member in discord_role.members: # Iterate donors in role
+                if (mem_id := str(member.id)) in config["custom_user_timeouts"]: # User has custom override 
+                    continue
+                
+                new_users[mem_id] = {
+                    "donor": True,
+                    "user_timeout_multiplier": user_perks["timeout_multiplier"],
+                    "max_chain": user_perks["max_chain"],
+                    "guild_timeout_multiplier": guild_perks["timeout_multiplier"],
+                    "guild_max_chain": guild_perks["max_chain"]
+                } | config["default_user_timeouts"]
+        
+        if count == 0:
+            print(f"Found {len(new_users)} donators!")
+        
+        user_timeout_durations = config_timeout(config["default_user_timeouts"], config["custom_user_timeouts"] | new_users)
+        await asyncio.sleep(donor_guild_check_seconds)
+        count += 1
 
 async def processQue():
     while True:
@@ -235,7 +283,12 @@ async def parse_command(message):
     cmd_name_opts = ["concat", "combine", "download", "downloader", "destroy"]
     
     author_id = str(message.author.id)
-    chain_limit = 9999 if message.author.id == bot.user.id else user_timeout_durations[author_id]["max_chain"] if (author_id in user_timeout_durations and "max_chain" in user_timeout_durations[author_id]) else command_chain_limit
+    
+    chain_limit = 9999 if message.author.id == bot.user.id else (
+        user_timeout_durations[author_id]["max_chain"] if (
+            author_id in user_timeout_durations and "max_chain" in user_timeout_durations[author_id]
+        ) else command_chain_limit
+    )
     
     command, *remainder = msg.split(">>")[:chain_limit]
     if command.startswith('!'):
@@ -255,6 +308,10 @@ async def parse_command(message):
         final_command_name = "concat"
     elif cmd in ["download", "downloader"]:
         final_command_name = "download"
+    elif cmd == "help":
+        final_command_name = "help"
+    elif cmd == "hat":
+        final_command_name = "hat"
     elif (ev1 := (cmd in ["destroy", ""])) or has_meta_prefix:
         final_command_name = "destroy"
         if not ev1 or cmd == "":
@@ -263,11 +320,18 @@ async def parse_command(message):
     if not final_command_name:
         return
 
-    if (remaining_time := apply_timeouts(message, cmd)) != True:
-        await message.reply(f"Please wait {ceil(remaining_time)} seconds to use this command again.")
+    is_timeout = apply_timeouts(message, cmd, guild_timeout_durations, user_timeout_durations, guild_timeouts, user_timeouts)
+    if is_timeout is not True:
+        await message.reply(f"Please wait {ceil(is_timeout)} seconds to use this command again.")
         return
 
     match final_command_name:
+        case "help":
+            await message.reply("VideoEditBot Command Documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
+        case "hat":
+            embed = discord.Embed(title = 'hat', description = 'hat')
+            embed.set_image(url = "https://cdn.discordapp.com/attachments/748021401016860682/920801735147139142/5298188282_1639606638167.png")
+            await message.reply("Hat", embed=embed)
         case "concat":
             Task(
                 Action(prepare_concat, message, args,
@@ -347,9 +411,13 @@ async def on_ready():
     user_timeout_durations[str(bot.user.id)]["ghost"] = True
     if not os.path.isdir(working_directory):
         os.makedirs(working_directory)
+    
     await bot.change_presence(activity = discord_status)
+    if donor_guild_id:
+        asyncio.create_task(check_donors())
     asyncio.create_task(processQue())
     asyncio.create_task(async_runner.looper())
+    
     botReady = True
     info("Bot ready!")
 
