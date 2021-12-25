@@ -24,18 +24,23 @@ The `concat <n> [<video1>, <video2>, ...]` command, which can take in `<n>` vide
     Example `concat 2 g h` (say a channel has two recent videos "hello.mp4" and "goodbye.mp4", this concatinates the videos with `goodbye.mp4` coming first)
 
 ## Metacommands:
+
 ***
+
 ### Pecking order:
+
 When doing an editing command, the order is as followed:
-        Attachments > attachments of replied to message > recent messages in channel
+
+    Attachments > attachments of replied to message > recent messages in channel
     
 ### Command chaining:
 You can link together commands using `>>` between them. For example, `download funny video >> destroy speed 5, toptext hello` would download `funny video` and then add a caption reading `hello`
     
 By adding `!` at the start of a command, the bot, when replying to itself, will override the previous message by deleting it before sending the result.
     
-    Example:
-    `!download woman dancing >> !destroy e 30, speed 5, mute, music penis music, musicskip 8 >> download man dancing >> !destroy e 30, speed 5, mute, music dramatic music, musicskip 25, volume 2 >> concat >> cap face off` downloads two videos, mutes them, speeds them up, adds a song and caption, and concatinates them
+    Example: !download woman dancing >> !destroy e 30, speed 5, mute, music penis music, musicskip 8 >> download man dancing >> !destroy e 30, speed 5, mute, music dramatic music, musicskip 25, volume 2 >> concat >> cap face off
+
+    Will download two videos, speed up, mute, add a song and caption to them, and then finally concatinate them
 
 ## Command list:
 
