@@ -1,5 +1,6 @@
 # Commands Documentation
 #### \[due to server restrictions various limits are imposed on the commands and use frequency of them for the official Discord bot. Donors can have have decreased restrictions]
+</br>
 
 ## Editing commands:
 ***
@@ -43,6 +44,7 @@ By adding `!` at the start of a command, the bot, when replying to itself, will 
     Will download two videos, speed up, mute, add a song and caption to them, and then finally concatinate them
 
 ## Command list:
+***
 
 | Command         | Shorthand   | Type   | Min  | Max          | Description                                                                                         |
 |-----------------|-------------|--------|------|--------------|-----------------------------------------------------------------------------------------------------|
