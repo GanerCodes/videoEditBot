@@ -1,14 +1,43 @@
-Commands
-===========
+# Commands Documentation
+#### \[due to server restrictions various limits are imposed on the commands and use frequency of them for the official Discord bot. Donors can have have decreased restrictions]
 
-These are commands that the bot supports.
+## Editing commands:
+***
+### Destroy command:  
+The `destroy [<arg1>=<val1>,<arg2>=<val2>,...]` commands takes parameters and edits a video according to it    
+    
+    Example: `destroy bass=100`, add a bass boost of 100.
+    
+    To use multiple commands, use commas `,` to separate them. For example, `bass=100, hypercam`
+    To use multiple groups of commands, use pipes `|` to separate groups of commands. For example, `ytp=100,toptext=hi|hcycle=3`
 
-A command is declared as `filtername=value`. For example, to add 100 bass boost, use `bass=100`.
+### Download command:  
+The `download <video>` command takes one parameter `video` as either a search query or URL.
+    
+    Example: `download funny video`, searches for "funny video" and downloads it up to 8mb; also supports URLs
 
-To use multiple commands, use a comma `,` to separate them. For example, bass boost + hypercam would be `bass=100, hypercam`.
-(You can also use pipes `|` to separate groups of commands to be processed. For example, `ytp=100|hcycle=3` is like running ytp=100 and running hcycle=3 on the output video).
+### Concat command:  
+The `concat <n> [<video1>, <video2>, ...]` command, which can take in `<n>` videos and concatinate them.
 
-To use the bot on Discord, prefix your command with "destroy". An empty command or "random" selects random parameters.
+    You can type the start of the filename  in order to order them 
+    
+    Example `concat 2 g h` (say a channel has two recent videos "hello.mp4" and "goodbye.mp4", this concatinates the videos with `goodbye.mp4` coming first)
+
+## Metacommands:
+***
+### Pecking order:
+When doing an editing command, the order is as followed:
+        Attachments > attachments of replied to message > recent messages in channel
+    
+### Command chaining:
+You can link together commands using `>>` between them. For example, `download funny video >> destroy speed 5, toptext hello` would download `funny video` and then add a caption reading `hello`
+    
+By adding `!` at the start of a command, the bot, when replying to itself, will override the previous message by deleting it before sending the result.
+    
+    Example:
+    `!download woman dancing >> !destroy e 30, speed 5, mute, music penis music, musicskip 8 >> download man dancing >> !destroy e 30, speed 5, mute, music dramatic music, musicskip 25, volume 2 >> concat >> cap face off` downloads two videos, mutes them, speeds them up, adds a song and caption, and concatinates them
+
+## Command list:
 
 | Command         | Shorthand   | Type   | Min  | Max          | Description                                                                                         |
 |-----------------|-------------|--------|------|--------------|-----------------------------------------------------------------------------------------------------|
@@ -80,4 +109,3 @@ To use the bot on Discord, prefix your command with "destroy". An empty command 
 | `glitch`        | `glch`      | Number | 1    | 100          | Makes the video corrupted                                                                           |
 | `repeatuntil`   | `repu`      | Number | 1    | 45           | Repeats video until this time is reached                                                            |
 | `timecode`      | `timc`      | Number | 1    | 4            | Messes with the video's timecode metadata. Only applies to Discord bot.                             |
-| `crash`         | `crsh`      | -      | -    | -            | Makes the video crash when it concludes. Only applies to Discord bot.                               |

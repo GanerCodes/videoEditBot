@@ -64,15 +64,15 @@ def getImageRes(path):
     return Image.open(path).size
 
 def getDur(filename):
-    return getout(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
+    return get_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
 
 def checkAudio(filename):
-    ac = getout(["ffprobe", "-v", "error", "-of", "flat=s_", "-select_streams", "1", "-show_entries", "stream=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
+    ac = get_output(["ffprobe", "-v", "error", "-of", "flat=s_", "-select_streams", "1", "-show_entries", "stream=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename])
     return not (ac == "null" or ac.strip() == "" or "no streams" in ac)
 
 def getSize(filename):
     cmd = ["ffprobe", "-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", filename.replace('\\', '/').replace('//', '/')]
-    return [i.strip() for i in getout(cmd).split('x')]
+    return [i.strip() for i in get_output(cmd).split('x')]
 
 def checkIfDurationIsUnderTime(name, time):
     nn = name

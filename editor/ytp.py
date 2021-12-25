@@ -1,7 +1,7 @@
+from subprocessHelper import get_output
 from pathHelper import *
 from os import path, makedirs, system, remove, rename
 from shutil import rmtree
-from subprocess import getoutput
 from math import floor
 from random import uniform as r
 
@@ -23,8 +23,8 @@ def ytp(name, itters, hasAudio):
 	e = path.splitext(name)
 	e0 = getName(pat)
 
-	t = round(eval(getoutput(["ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", name])))
-	d = round(eval(getoutput(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", name])))
+	t = round(eval(get_output(["ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", name])))
+	d = round(eval(get_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", name])))
 
 	dirPath = f"{pat}/YTP{e0}"
 	if path.isdir(dirPath):
@@ -49,12 +49,12 @@ def ytp(name, itters, hasAudio):
 	n = []
 
 	for i in points:
-		getoutput(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", name, "-ss", str(t), "-to", str(i[0]), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/a{index}.mp4"])
-		getoutput(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", name, "-ss", str(i[0]), "-to", str(i[0] + i[1]), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/b{index}.mp4"])
+		get_output(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", name, "-ss", str(t), "-to", str(i[0]), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/a{index}.mp4"])
+		get_output(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", name, "-ss", str(i[0]), "-to", str(i[0] + i[1]), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/b{index}.mp4"])
 		args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f"{pat}/YTP{e0}/b{index}.mp4", "-vf", "reverse", f"{pat}/YTP{e0}/r{index}.mp4"]
 		if hasAudio:
 			args[9:9] = ["-af", "areverse"]
-		getoutput(args)
+		get_output(args)
 
 		n.append(f"a{index}.mp4")
 		n.append(f"b{index}.mp4")
@@ -62,14 +62,14 @@ def ytp(name, itters, hasAudio):
 		n.append(f"b{index}.mp4")
 		t = i[0] + i[1]
 		index += 1
-	getoutput(["ffmpeg", "-hide_banner", "-loglevel", "-y", "-i", name, "-ss", str(t), "-t", str(d), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/e.mp4"])
+	get_output(["ffmpeg", "-hide_banner", "-loglevel", "fatal", "-y", "-i", name, "-ss", str(t), "-t", str(d), "-break_non_keyframes", "1", f"{pat}/YTP{e0}/e.mp4"])
 	n.append('e.mp4')
 
 	with open(f'{pat}/YTP{e0}/temp.txt','w') as f:
 		for i in n:
 			f.write(f"file '{i}'\n")
 
-	getoutput(["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", f"{pat}/YTP{e0}/temp.txt", "-c", "copy", f"{pat}/_{e0}.mp4"])
+	get_output(["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", f"{pat}/YTP{e0}/temp.txt", "-c", "copy", f"{pat}/_{e0}.mp4"])
 	remove(name)
 	rename(f"{pat}/_{e0}.mp4", name)
 	#shutil.rmtree(e[0])

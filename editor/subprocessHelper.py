@@ -29,6 +29,9 @@ def loud_run(command, **kawrgs):
 def getout(command, **kawrgs):
     return _run(command, text = True, stdout = PIPE, **kawrgs).stdout.strip()
 
+def get_output(command):
+    return Popen(command, shell = False, stdout = PIPE).communicate()[0].decode().strip()
+
 def getout_r(command, **kawrgs):
     r = _run(command, text = True, stdout = PIPE, **kawrgs)
     return [r.returncode, r.stdout]
