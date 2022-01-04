@@ -56,13 +56,14 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         if len(url) == 12 and ' ' not in url and get(f"https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v={url}").text.lower().strip() != "not found":
             url = f"https://youtube.com/watch?v={url}"
         else:
-            tmpUrl = url
-            url = youtubeSearch(url)
-            if not url:
-                return result(False, "", "YouTube search error")
+            url = f"ytsearch:{url}"
+            # tmpUrl = url
+            # url = youtubeSearch(url)
+            # if not url:
+                # return result(False, "", "YouTube search error")
 
-    urlCMD = ["yt-dlp", "--no-playlist", "-g"]
-    if cookies and path.isfile(cookies): urlCMD += ["--cookies", cookies]
+    urlCMD = ["yt-dlp", "--no-playlist", "-g"] + (
+        ["--cookies", cookies] if cookies and path.isfile(cookies) else [])
     urlCMD += [url]
     URLs = getout_r(urlCMD)
 

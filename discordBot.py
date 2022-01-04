@@ -96,16 +96,14 @@ def apply_timeouts(msg, command,
         user_timeout_durations = user_timeout_durations,
         guild_timeouts = guild_timeouts,
         user_timeouts = user_timeouts):
+        
     
     ahr_id = str(msg.author.id)
     gld_id = str(msg.guild.id )
     gld_own_id = str(msg.guild.owner.id)
     
-    
     if "ghost" in user_timeout_durations[ahr_id] or "ghost" in guild_timeout_durations[gld_id]:
-        print(f"{ahr_id} is a ghost!")
         return True
-    print(f"{ahr_id} is not a ghost!")
     
     gt, ut = guild_timeouts[gld_id], user_timeouts[ahr_id]
     is_donor_user = "donor" in user_timeout_durations[ahr_id]
@@ -411,7 +409,6 @@ async def on_ready():
         f"<@&{bot.user.id}>",
         f"<@#{bot.user.id}>",
     ]
-    user_timeout_durations[str(bot.user.id)]["ghost"] = True
     if not os.path.isdir(working_directory):
         os.makedirs(working_directory)
     
