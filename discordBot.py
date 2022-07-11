@@ -275,7 +275,7 @@ def process_result_post(msg, res, filename = "video.mp4", prefix = None, random_
     if res.success:
         text = random.choice(response_messages) if random_message else res.message
         content = f"{prefix.strip()} ║ {text.strip()}" if prefix else text.strip()
-        messageQue.append(qued_msg(context = msg, filepath = res.filename, filename = hash_str(filename), message = content, reply = True))
+        messageQue.append(qued_msg(context = msg, filepath = res.filename, filename = hash_filename(filename), message = content, reply = True))
     else:
         messageQue.append(qued_msg(context = msg, message = res.message, reply = True))
 
