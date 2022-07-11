@@ -42,6 +42,7 @@ valid_image_extensions = ["png", "gif", "jpg", "jpeg"]
 valid_extensions = valid_video_extensions + valid_image_extensions
 
 hash_str = lambda s: str(sha256(s.encode()).digest().hex())[:32]
+hash_filename = lambda s: f"{hash_str((q:=os.path.splitext(s))[0])}{q[1]}"
 
 get_default = lambda v, d = config["unspecified_default_timeout"]: v["default"] if "default" in v else d
 def config_timeout(default, custom):
