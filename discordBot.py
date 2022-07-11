@@ -100,7 +100,11 @@ def apply_timeouts(msg, command,
     
     ahr_id = str(msg.author.id)
     gld_id = str(msg.guild.id )
-    gld_own_id = str(msg.guild.owner.id)
+    try:
+        gld_own_id = str(msg.guild.owner.id)
+    except AttributeError:
+        gld_own_id = '0'
+        print(f"Error aquiring owner ID for guild {gld_id}")
     
     if "ghost" in user_timeout_durations[ahr_id] or "ghost" in guild_timeout_durations[gld_id]:
         return True
