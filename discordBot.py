@@ -511,11 +511,12 @@ result = namedtuple("result", "success filename message", defaults = 3 * [None])
 async_runner = Async_handler()
 taskList, messageQue = [], []
 
-intents = discord.Intents.default()
-intents.messages = True
-intents.members = True
-discord_status = discord.Game(name = discord_tagline)
-bot = discord.AutoShardedClient(status = discord_status, intents = intents)
+intents = discord.Intents.all()
+intents.typing = False
+intents.presences = False
+# intents.members = False
+discord_status = discord.Game(name=discord_tagline)
+bot = discord.AutoShardedClient(status=discord_status, intents=intents)
 
 class target_group:
     def __init__(self, attachments, reply, channel):
