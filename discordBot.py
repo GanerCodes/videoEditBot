@@ -70,9 +70,9 @@ taskList, messageQue = [], []
 intents = discord.Intents.all()
 intents.typing = False
 intents.presences = False
-# intents.messages = False
+# intents.members = False
 discord_status = discord.Game(name=discord_tagline)
-bot = discord.AutoShardedClient(status=discord_status, intents=intents)
+bot = discord.AutoShardedClient(status=discord_status, intents=intents, chunk_guilds_at_startup=False)
 
 class target_group:
     def __init__(self, attachments, reply, channel):
@@ -184,11 +184,11 @@ async def processQue():
         res = messageQue.pop(0)
         
         action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
-        if res.filename:
-            if (filesize := os.path.getsize(res.filename)) >= 8 * 1024 ** 2:
+        if res.filepath:
+            if (filesize := os.path.getsize(res.filepath)) >= 8 * 1024 ** 2:
                 await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over Discord's 8MB upload limit.")
             else:
-                with open(res.filename, 'rb') as f:
+                with open(res.filepath, 'rb') as f:
                     args = [res.message] if res.message else []
                     file_kwargs = {"filename": res.filename} if res.filename else {}
                     if res.message and res.context.content.startswith('!') and (action == res.context.reply and res.context.author.id == bot.user.id):
