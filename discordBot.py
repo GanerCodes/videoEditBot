@@ -2,6 +2,7 @@
 # Check owner of guild when processing command, apply relevent donor perks
 
 import os, sys, time, random, discord, requests, asyncio, logging
+from hashlib import sha256
 from pyjson5 import load as json_load
 from combiner import combiner
 from editor.download import download
@@ -39,6 +40,8 @@ donor_guild_check_seconds = config["donor_guild_check_seconds"] if donor_guild_i
 valid_video_extensions = ["mp4", "webm", "avi", "mkv", "mov"]
 valid_image_extensions = ["png", "gif", "jpg", "jpeg"]
 valid_extensions = valid_video_extensions + valid_image_extensions
+
+hash_str = lambda s: str(sha256(s.encode()).digest().hex())[:32]
 
 get_default = lambda v, d = config["unspecified_default_timeout"]: v["default"] if "default" in v else d
 def config_timeout(default, custom):
@@ -271,7 +274,7 @@ def process_result_post(msg, res, filename = "video.mp4", prefix = None, random_
     if res.success:
         text = random.choice(response_messages) if random_message else res.message
         content = f"{prefix.strip()} ║ {text.strip()}" if prefix else text.strip()
-        messageQue.append(qued_msg(context = msg, filepath = res.filename, filename = filename, message = content, reply = True))
+        messageQue.append(qued_msg(context = msg, filepath = res.filename, filename = hash_str(filename), message = content, reply = True))
     else:
         messageQue.append(qued_msg(context = msg, message = res.message, reply = True))
 
