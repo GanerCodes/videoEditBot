@@ -287,6 +287,7 @@ async def parse_command(message):
     if message.author.id == bot.user.id and not '║' in message.content:
         return
     
+    original_msg = message.content
     msg = message.content.split('║', 1)[0]
     if len(msg) == 0: return
     
@@ -353,7 +354,8 @@ async def parse_command(message):
 
     match final_command_name:
         case "help":
-            await message.reply("VideoEditBot Command Documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
+            if 'veb' in original_msg:
+                await message.reply("VideoEditBot Command Documentation: https://github.com/GanerCodes/videoEditBot/blob/master/COMMANDS.md")
         case "hat":
             embed = discord.Embed(title = 'hat', description = 'hat')
             embed.set_image(url = "https://cdn.discordapp.com/attachments/748021401016860682/920801735147139142/5298188282_1639606638167.png")
