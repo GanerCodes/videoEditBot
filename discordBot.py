@@ -181,25 +181,28 @@ async def processQue():
         if not len(messageQue):
             await asyncio.sleep(1)
             continue
-            
+        
         res = messageQue.pop(0)
         
-        action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
-        if res.filepath:
-            if (filesize := os.path.getsize(res.filepath)) >= 8 * 1024 ** 2:
-                await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over Discord's 8MB upload limit.")
+        try:
+            action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
+            if res.filepath:
+                if (filesize := os.path.getsize(res.filepath)) >= 8 * 1024 ** 2:
+                    await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over Discord's 8MB upload limit.")
+                else:
+                    with open(res.filepath, 'rb') as f:
+                        args = [res.message] if res.message else []
+                        file_kwargs = {"filename": res.filename} if res.filename else {}
+                        if res.message and res.context.content.startswith('!') and (action == res.context.reply and res.context.author.id == bot.user.id):
+                            await res.context.delete()
+                            await asyncio.sleep(1)
+                            await res.context.channel.send(*args, file = discord.File(f, **file_kwargs))
+                        else:
+                            await action(*args, file = discord.File(f, **file_kwargs))
             else:
-                with open(res.filepath, 'rb') as f:
-                    args = [res.message] if res.message else []
-                    file_kwargs = {"filename": res.filename} if res.filename else {}
-                    if res.message and res.context.content.startswith('!') and (action == res.context.reply and res.context.author.id == bot.user.id):
-                        await res.context.delete()
-                        await asyncio.sleep(1)
-                        await res.context.channel.send(*args, file = discord.File(f, **file_kwargs))
-                    else:
-                        await action(*args, file = discord.File(f, **file_kwargs))
-        else:
-            await action(res.message)
+                await action(res.message)
+        except Exception as err:
+            print(f'Unable to post a message, "{err}"')
 
 async def get_targets(msg, attachments = True, reply = True, channel = True, message_search_count = 8, stop_on_first = True):
     msg_attachments, msg_reply, msg_channel = [], [], []
