@@ -203,6 +203,7 @@ async def processQue():
                 await action(res.message)
         except Exception as err:
             print(f'Unable to post a message, "{err}"')
+            await asyncio.sleep(0.5)
 
 async def get_targets(msg, attachments = True, reply = True, channel = True, message_search_count = 8, stop_on_first = True):
     msg_attachments, msg_reply, msg_channel = [], [], []
