@@ -1,5 +1,4 @@
 # Commands Documentation
-#### \[due to server restrictions various limits are imposed on the commands and use frequency of them for the official Discord bot. Donors can have have decreased restrictions]
 </br>
 
 ## Editing commands:
