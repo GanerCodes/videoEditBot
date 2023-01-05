@@ -399,7 +399,7 @@ async def parse_command(message):
                     skip_task_fail_handler = True),
                 Action(download_discord_attachment, swap_arg("target"), swap_arg("filename"),
                     name = "VEB Download Target"),
-                Action(editor, swap_arg("filename"), args, workingDir = working_directory, keepExtraFiles = True,
+                Action(editor, swap_arg("filename"), args, workingDir = working_directory, keepExtraFiles = False,
                     name = "VEB",
                     parse = lambda x: {
                         "result": x,
