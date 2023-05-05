@@ -1,3 +1,5 @@
+# Surely everything will work the exact same forever and ever
+
 ffprobe-python
 ffmpeg-python
 discord.py

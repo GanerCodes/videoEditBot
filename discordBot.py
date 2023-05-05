@@ -1,5 +1,9 @@
-# TODO: every 5 minutes scan, with another bot, update the donor guilds/users.
-# Check owner of guild when processing command, apply relevent donor perks
+# Everytime I come back to this project I realize how bad at programming I used to be
+
+# TODO:
+#   Every 5 minutes scan, with another bot, update the donor guilds/users.
+#   Check owner of guild when processing command, apply relevent donor perks
+#   Rewrite the thing again to not suck and actually be readable and documented so other people can actually contribute
 
 import os, sys, time, random, discord, requests, asyncio, logging
 from hashlib import sha256
@@ -8,7 +12,6 @@ from combiner import combiner
 from editor.download import download
 from collections import namedtuple, defaultdict
 from func_helper import  *
-from threading import Thread
 from functools import reduce
 from operator import add
 from editor import editor
@@ -23,23 +26,27 @@ info = lambda *args: logger.info(' | '.join(map(str, args)))
 
 config = json_load(open("config.json", 'r'))
 
-message_search_count = config["message_search_count"]
-command_chain_limit  = config["command_chain_limit"]
-working_directory    = os.path.realpath(config["working_directory"])
-response_messages    = config["response_messages"]
-max_concat_count     = config["max_concat_count"]
-discord_tagline      = config["discord_tagline"]
-discord_token        = config["discord_token"]
-meta_prefixes        = config["meta_prefixes"]
-cookie_file          = config["cookie_file"] if "cookie_file" in config else None
-donor_guild_id       = config["donor_guild_id"] if "donor_guild_id" in config else None
-disable_guild_owner_check = config["disable_guild_owner_check"] if "disable_guild_owner_check" in config else None
+FILE_SIZE_LIMIT_MB = 24 # My internet pls
 
-donor_teir_roles = config["donor_teir_roles"] if donor_guild_id else None
-donor_guild_check_seconds = config["donor_guild_check_seconds"] if donor_guild_id else None
+message_search_count      = config["message_search_count"]
+command_chain_limit       = config["command_chain_limit"]
+working_directory         = os.path.realpath(config["working_directory"])
+response_messages         = config["response_messages"]
+max_concat_count          = config["max_concat_count"]
+discord_tagline           = config["discord_tagline"]
+discord_token             = config["discord_token"]
+meta_prefixes             = config["meta_prefixes"]
+cookie_file               = config.setdefault("cookie_file")
 
-valid_video_extensions = ["mp4", "webm", "avi", "mkv", "mov"]
-valid_image_extensions = ["png", "gif", "jpg", "jpeg"]
+disable_donor_check       = config.setdefault("disable_donor_check")
+disable_guild_owner_check = config.setdefault("disable_guild_owner_check")
+donor_guild_id            = config.setdefault("donor_guild_id")
+donor_teir_roles          = config.setdefault("donor_teir_roles")
+donor_guild_check_seconds = config.setdefault("donor_guild_check_seconds")
+disable_guild_owner_author_check = config.setdefault("disable_guild_owner_author_check") # bruh
+
+valid_video_extensions = ("mp4", "webm", "avi", "mkv", "mov")
+valid_image_extensions = ("png", "gif", "jpg", "jpeg")
 valid_extensions = valid_video_extensions + valid_image_extensions
 
 hash_str = lambda s: str(sha256(s.encode()).digest().hex())[:32]
@@ -83,7 +90,7 @@ class target_group:
         k = []; [k.append(i) for i in (self.attachments + self.reply + self.channel) if i not in k]
         return k
 
-def human_size(size, units=[' bytes','KB','MB','GB','TB', 'PB', 'EB']): # https://stackoverflow.com/a/43750422/14501641
+def human_size(size, units="B|KB|MB|GB|TB|PB|EB".split('|')): # https://stackoverflow.com/a/43750422/14501641
     return str(size) + units[0] if size < 1024 else human_size(size >> 10, units[1:])
 
 def generate_uuid_from_msg(msg_id):
@@ -112,14 +119,17 @@ def apply_timeouts(msg, command,
             gld_id = '0'
             print(f"Error aquiring guild ID for author ID {ahr_id}")
     
-    try:
-        if gld_id == '0':
-            gld_own_id = '0'
-        else:
-            gld_own_id = str(msg.guild.owner.id)
-    except AttributeError:
+    if disable_guild_owner_author_check:
         gld_own_id = '0'
-        print(f"Error aquiring owner ID for guild ID {gld_id}")
+    else:
+        try:
+            if gld_id == '0':
+                gld_own_id = '0'
+            else:
+                gld_own_id = str(msg.guild.owner.id)
+        except AttributeError:
+            gld_own_id = '0'
+            print(f"Error aquiring owner ID for guild ID {gld_id}")
     
     if "ghost" in user_timeout_durations[ahr_id] or "ghost" in guild_timeout_durations[gld_id]:
         return True
@@ -188,8 +198,8 @@ async def processQue():
         try:
             action = res.context.reply if res.reply else (res.context.edit if res.edit else res.context.channel.send)
             if res.filepath:
-                if (filesize := os.path.getsize(res.filepath)) >= 8 * 1024 ** 2:
-                    await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over Discord's 8MB upload limit.")
+                if (filesize := os.path.getsize(res.filepath)) >= FILE_SIZE_LIMIT_MB * 1024 ** 2:
+                    await action(f"Sorry, but the resulting file ({human_size(filesize)}) is over the {FILE_SIZE_LIMIT_MB}MB bot upload limit.")
                 else:
                     with open(res.filepath, 'rb') as f:
                         args = [res.message] if res.message else []
@@ -385,9 +395,11 @@ async def parse_command(message):
             ).run_threaded()
         case "download":
             Task(
-                Action(download, download_filename := f"{generate_uuid_folder_from_msg(message.id)}.mp4", args, name = "yt-dlp download"),
-                Action(process_result_post, message, swap_arg("result"), download_filename, remainder,
-                    name = "Post Download"),).run_threaded()
+                Action(download,
+                    download_filename := f"{generate_uuid_folder_from_msg(message.id)}.mp4",
+                    args, name="yt-dlp download", file_limit=FILE_SIZE_LIMIT_MB),
+                Action(process_result_post, message, swap_arg("result"), download_filename,
+                    remainder, name="Post Download"),).run_threaded()
         case "destroy":
             Task(
                 Action(prepare_VideoEdit, message,
@@ -426,7 +438,7 @@ async def on_ready():
         os.makedirs(working_directory)
     
     await bot.change_presence(activity = discord_status)
-    if donor_guild_id:
+    if donor_guild_id and not disable_donor_check:
         asyncio.create_task(check_donors())
     asyncio.create_task(processQue())
     asyncio.create_task(async_runner.looper())

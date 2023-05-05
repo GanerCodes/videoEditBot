@@ -8,10 +8,10 @@ import argparse
 
 VBR = "775k"
 ABR = "64k"
-FILESIZE = "6.3M"
 
-result = namedtuple("result", "success filename message", defaults = 3 * ' ')
+result = namedtuple("result", "success filename message", defaults=3 * ' ')
 
+# clearly hacked together trash that has a 0% chance of workin anymore
 def youtubeSearch(url):
     txt = ""
     counter = 0
@@ -32,19 +32,20 @@ def youtubeSearch(url):
             return f"https://youtube.com/watch?v={i['videoRenderer']['videoId']}"
     return False
 
+# KEK
 def is_url(url):
     try:
         return get(url).url
     except:
         return False
 
-def addModifiers(cmd, skip = None, duration = None):
+def addModifiers(cmd, skip=None, duration=None):
     if skip:
         cmd += ["-ss", str(skip)]
     if duration:
         cmd += ["-t", str(duration)]
 
-def download(name, url, skip = None, delay = None, duration = None, video = True, cookies = "cookies.txt"):
+def download(name, url, skip=None, delay=None, duration=None, video=True, cookies="cookies.txt", file_limit=None):
     name = name.replace('\\', '/').replace('//', '/')
     if not path.isdir(folder := path.split(name)[0]): makedirs(folder)
     url = url.replace('\n', '').strip()
@@ -56,11 +57,7 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         if len(url) == 12 and ' ' not in url and get(f"https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v={url}").text.lower().strip() != "not found":
             url = f"https://youtube.com/watch?v={url}"
         else:
-            url = f"ytsearch:{url}"
-            # tmpUrl = url
-            # url = youtubeSearch(url)
-            # if not url:
-                # return result(False, "", "YouTube search error")
+            url = f"ytsearch:{url}" # Does this even work anymore?
 
     urlCMD = ["yt-dlp", "--no-playlist", "-g"] + (
         ["--cookies", cookies] if cookies and path.isfile(cookies) else [])
@@ -72,7 +69,7 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
     else:
         return result(False, "", "URL parsing error")
     
-    videoURL, audioURL = "", ""
+    videoURL = audioURL = ""
     if len(URLs) == 1:
         video = False
         audioURL = URLs[0]
@@ -92,8 +89,8 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
         ffmpegCommand += ["-b:v", str(VBR)]
     if ABR:
         ffmpegCommand += ["-b:a", str(ABR)]
-    if FILESIZE:
-        ffmpegCommand += ["-fs", str(FILESIZE)]
+    if file_limit:
+        ffmpegCommand += ["-fs", f"{file_limit}M"]
     if video and videoURL:
         ffmpegCommand += ["-fflags", "+shortest"]
 
@@ -105,11 +102,11 @@ def download(name, url, skip = None, delay = None, duration = None, video = True
     return result(True, name, "")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description = "Download a video based on a URL or query.")
-    parser.add_argument("-o", "--output"  , type = str  , dest = "output"  , help = "Output file name")
-    parser.add_argument("-u", "--url"     , type = str  , dest = "url"     , help = "Url OR search query")
-    parser.add_argument("-s", "--skip"    , type = float, dest = "skip"    , help = "Skip in video", default = None)
-    parser.add_argument("-d", "--duration", type = float, dest = "duration", help = "Max duration of downloaded video", default = None)  
+    parser = argparse.ArgumentParser(description="Download a video based on a URL or query.")
+    parser.add_argument("-o", "--output"  , type=str  , dest="output"  , help="Output file name")
+    parser.add_argument("-u", "--url"     , type=str  , dest="url"     , help="Url OR search query")
+    parser.add_argument("-s", "--skip"    , type=float, dest="skip"    , help="Skip in video", default=None)
+    parser.add_argument("-d", "--duration", type=float, dest="duration", help="Max duration of downloaded video", default=None)  
     args = parser.parse_args()
     if not (args.output or args.url):
         parser.error("Error. Output and Url are required.")
