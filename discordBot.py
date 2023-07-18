@@ -3,6 +3,9 @@
 # TODO:
 #   Every 5 minutes scan, with another bot, update the donor guilds/users.
 #   Check owner of guild when processing command, apply relevent donor perks
+#   Datamosh is broken
+#   Thing likes to just not working a wholllllllle lot
+#   Actually the entire codebase sucks
 #   Rewrite the thing again to not suck and actually be readable and documented so other people can actually contribute
 
 import os, sys, time, random, discord, requests, asyncio, logging
