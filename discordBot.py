@@ -301,6 +301,9 @@ async def parse_command(message):
     if message.author.id == bot.user.id and not '║' in message.content:
         return
     
+    if message.author.bot:
+        return
+
     original_msg = message.content
     msg = message.content.split('║', 1)[0]
     if len(msg) == 0: return
@@ -341,7 +344,7 @@ async def parse_command(message):
         remainder = f"destroy {remainder}"
     
     spl = command.strip().split(' ', 1)
-    cmd  = spl[0].strip().lower()
+    cmd  = spl[0].strip()#.lower()
     args = spl[1].strip() if len(spl) > 1 else ""
     
     final_command_name = None
