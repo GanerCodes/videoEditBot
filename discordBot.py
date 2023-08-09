@@ -298,9 +298,8 @@ def process_result_post(msg, res, filename = "video.mp4", prefix = None, random_
         messageQue.append(qued_msg(context = msg, message = res.message, reply = True))
 
 async def parse_command(message):
-    if (message.author.id == bot.user.id and not '║' in message.content) or message.author.bot:
+    if (message.author.id == bot.user.id and not '║' in message.content) or (message.author.bot and message.author.id != bot.user.id):
         return
-    
 
     original_msg = message.content
     msg = message.content.split('║', 1)[0]
