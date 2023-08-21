@@ -3,4 +3,6 @@ config.json
 cookies.txt
 active/*
 
+venv/
+
 hi.mp4
