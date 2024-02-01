@@ -1,5 +1,7 @@
 # Discord Bot that edits videos and photos.
 
+186 stars and counting yet nobody to actually fix anything ;<
+
 Requirements:
  - python 3.10.x
  - ffmpeg 4.3+

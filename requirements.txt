@@ -5,7 +5,7 @@ ffmpeg-python
 discord.py
 pyjson5
 psutil
-Pillow
+Pillow==9.5.0
 yt-dlp
 pydub
 requests
