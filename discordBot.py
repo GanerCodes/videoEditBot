@@ -328,8 +328,7 @@ async def parse_command(message):
     chain_limit = 9999 if message.author.id == bot.user.id else (
         user_timeout_durations[author_id]["max_chain"] if (
             author_id in user_timeout_durations and "max_chain" in user_timeout_durations[author_id]
-        ) else command_chain_limit
-    )
+        ) else command_chain_limit)
     
     command, *remainder = msg.split(">>")[:chain_limit]
     if command.startswith('!'):
@@ -353,10 +352,10 @@ async def parse_command(message):
         final_command_name = "help"
     elif cmd == "hat":
         final_command_name = "hat"
-    elif (ev1 := (cmd in ["destroy", ""])) or has_meta_prefix:
+    elif (ev1 := (cmd in ["destroy", ""])) or has_meta_prefix: # this part is janky
         final_command_name = "destroy"
         if not ev1 or cmd == "":
-            args = f"{cmd} {args}"
+            args = f"{spl[0].strip()} {args}" #
 
     if not final_command_name:
         return
@@ -410,7 +409,7 @@ async def parse_command(message):
                     check = lambda x: x,
                     parse = lambda x: {
                         "target": x[0],
-                        "filename": x[1]},
+                        "filename": x[1] },
                     skip_task_fail_handler = True),
                 Action(download_discord_attachment, swap_arg("target"), swap_arg("filename"),
                     name = "VEB Download Target"),
@@ -418,7 +417,7 @@ async def parse_command(message):
                     name = "VEB",
                     parse = lambda x: {
                         "result": x,
-                        "filename": x.filename}),
+                        "filename": x.filename }),
                 Action(process_result_post, message, swap_arg("result"), swap_arg("filename"), remainder,
                     name = "VEB Post"),
                 async_handler = async_runner,
