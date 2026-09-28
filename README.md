@@ -1,6 +1,8 @@
-# Discord Bot that edits videos and photos. [super old code lol]
+![Discord Bot](https://shields.io)
+![Python Version](https://shields.io)
+![FFmpeg](https://shields.io)
 
-check out https://github.com/DevelopCMD/videoeditbot-portable it seems to be pretty cool from the preview!
+# Discord Bot that edits videos and photos. (wip)
 
 Requirements:
  - python 3.10+
